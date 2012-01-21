@@ -38,6 +38,7 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
 using Aurora.Framework;
+using Aurora.Simulation.Base;
 
 namespace Aurora.Addon.VirtualTokens
 {
@@ -47,7 +48,7 @@ namespace Aurora.Addon.VirtualTokens
         public string code = "";
         public int estate = 1;
         public UUID founder = UUID.Zero;
-        public DateTime created = null;
+        public DateTime created;
         public UUID icon = UUID.Zero;
         public bool overridable = false;
         public UUID category = UUID.Zero;
@@ -64,8 +65,7 @@ namespace Aurora.Addon.VirtualTokens
         public bool enabled;
     }
 
-
-    public class VirtualTokens : IAuroraDataPlugin
+    public class VirtualTokensData : IAuroraDataPlugin
     {
         private bool m_enabled = false;
         public bool Enabled
@@ -134,16 +134,6 @@ namespace Aurora.Addon.VirtualTokens
             }
 
             m_enabled = config.GetBoolean("Enabled", false);
-
-            defaultIssuerName = config.GetString("DefaultIssuerName", "Token Issuer");
-            defaultIssuerUUID = UUID.Parse(config.GetString("DefaultIssuerUUID", UUID.Zero.ToString()));
-            defaultIssuerPassword = config.GetString("DefaultIssuerPassword", string.Empty);
-
-            if (defaultIssuerPassword == string.Empty)
-            {
-                m_enabled = false;
-                Warn("No password specified for default issuer.");
-            }
         }
 
         public void Initialize(IGenericData GenericData, IConfigSource source, IRegistryCore simBase, string DefaultConnectionString)
@@ -156,34 +146,6 @@ namespace Aurora.Addon.VirtualTokens
             }
             DataManager.DataManager.RegisterPlugin(this);
 
-            IUserAccountService userservice = simBase.RequestModuleInterface<IUserAccountService>();
-            if (userservice == null)
-            {
-                m_enabled = false;
-                Warn("Could not find user service");
-                return;
-            }
-            if(defaultIssuerUUID != UUID.Zero){
-                defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerUUID);
-            }else{
-                defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
-            }
-            if (defaultIssuer == null)
-            {
-                Warn("Creating default issuer, " + defaultIssuerName);
-                IUserAccountService accountService = simBase.RequestModuleInterface<IUserAccountService>();
-                defaultIssuerUUID = defaultIssuerUUID == UUID.Zero ? UUID.Random() : defaultIssuerUUID;
-                accountService.CreateUser(defaultIssuerUUID, defaultIssuerName, Utils.MD5String(defaultIssuerPassword), string.Empty);
-                defaultIssuer = simBase.RequestModuleInterface<IUserAccountService>().GetUserAccount(UUID.Zero, defaultIssuerUUID);
-            }
-
-            if (defaultIssuer == null)
-            {
-                m_enabled = false;
-                Warn("Failed to locate or create default issuer.");
-                return;
-            }
-
             GD = GenericData;
             GD.ConnectToDatabase(ConnectionString, Name, true);
         }
@@ -195,7 +157,7 @@ namespace Aurora.Addon.VirtualTokens
         public VirtualToken AddToken(VirtualToken token)
         {
             token.id = token.id == UUID.Zero ? UUID.Random() : token.id;
-            token.created = token.created == null ? DateTime.Now : token.created;
+            token.created = DateTime.Now;
 
             return GD.Insert("as_virtualtokens", new string[11]{
                 "id",
@@ -284,7 +246,7 @@ namespace Aurora.Addon.VirtualTokens
 
             if (query.Count != 1)
             {
-                Warn("No virtual token could be found with ID " + id);
+                Warn("No virtual token could be found with ID " + estateID);
             }
             else
             {
@@ -335,6 +297,140 @@ namespace Aurora.Addon.VirtualTokens
                 issuer.tokenID,
                 issuer.userID
             });
+        }
+
+        #endregion
+    }
+
+    public class VirtualTokensService : IService
+    {
+        private string defaultIssuerPassword;
+        private string defaultIssuerName;
+        private UUID defaultIssuerUUID;
+        UserAccount defaultIssuer;
+
+        bool m_enabled = false;
+        IRegistryCore m_registry;
+
+        public string Name
+        {
+            get
+            {
+                return "VirtualTokensService";
+            }
+        }
+
+        #region console wrappers
+
+        private void Info(object message)
+        {
+            MainConsole.Instance.Info("[" + Name + "]: " + message.ToString());
+        }
+
+        private void Warn(object message)
+        {
+            MainConsole.Instance.Warn("[" + Name + "]: " + message.ToString());
+        }
+
+        #endregion
+
+        #region IService members
+
+        public void Initialize(IConfigSource config, IRegistryCore registry)
+        {
+            m_registry = registry;
+
+            IConfig VTconfig = config.Configs["Virtual Tokens"];
+            if (VTconfig != null)
+            {
+                m_enabled = VTconfig.GetBoolean("Enabled", false);
+                if (m_enabled)
+                {
+                    defaultIssuerName = VTconfig.GetString("DefaultIssuerName", "Token Issuer");
+                    defaultIssuerUUID = UUID.Parse(VTconfig.GetString("DefaultIssuerUUID", UUID.Zero.ToString()));
+                    string password = VTconfig.GetString("DefaultIssuerPassword", string.Empty).Trim();
+                    if (password == string.Empty)
+                    {
+                        m_enabled = false;
+                        Warn("Default Issuer Password was not specified");
+                    }
+                    else
+                    {
+                        defaultIssuerPassword = Utils.MD5(password);
+                    }
+                }
+            }
+
+            if (m_enabled)
+            {
+                registry.RegisterModuleInterface<VirtualTokensService>(this);
+            }
+        }
+
+        public void Start(IConfigSource config, IRegistryCore registry)
+        {
+            if (m_enabled)
+            {
+                m_registry = registry;
+            }
+        }
+
+        public void FinishedStartup()
+        {
+            if (m_enabled)
+            {
+                IUserAccountService userservice = m_registry.RequestModuleInterface<IUserAccountService>();
+
+                if (userservice != null)
+                {
+                    Info("Enabled");
+                    if (defaultIssuerUUID != UUID.Zero)
+                    {
+                        Info("Attempting to find default issuer by UUID " + defaultIssuerUUID);
+                        defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerUUID);
+                    }
+                    else
+                    {
+                        Info("Attempting to find default issuer by name " + defaultIssuerName);
+                        defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
+                    }
+                    if (defaultIssuer == null)
+                    {
+                        Warn("Default issuer account not found, attempting to create");
+                        if (defaultIssuerUUID != UUID.Zero)
+                        {
+                            userservice.CreateUser(defaultIssuerUUID, defaultIssuerName, defaultIssuerPassword, "");
+                        }
+                        else
+                        {
+                            userservice.CreateUser(defaultIssuerName, defaultIssuerPassword, "");
+                        }
+                        defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
+                        if (defaultIssuer == null)
+                        {
+                            Warn("Failed to create account for default issuer");
+                            m_enabled = false;
+                        }
+                        else
+                        {
+                            Info(defaultIssuer.Name + " created as default issuer with UUID " + defaultIssuer.PrincipalID);
+                        }
+                    }
+                    else
+                    {
+                        Info(defaultIssuer.Name + " found with UUID " + defaultIssuer.PrincipalID);
+                    }
+                }
+                else
+                {
+                    m_enabled = false;
+                    Info("Could not find user service");
+                }
+            }
+            else
+            {
+                Info("Disabled");
+            }
         }
 
         #endregion

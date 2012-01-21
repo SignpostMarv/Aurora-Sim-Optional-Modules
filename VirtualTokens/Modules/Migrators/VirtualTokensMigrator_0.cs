@@ -91,7 +91,7 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                         Name = "description",
                         Type = ColumnTypes.String255
                     }
-                }, new IndexDefinition[5]{
+                }, new IndexDefinition[1]{
                     new IndexDefinition{
                         Fields = new string[1]{ "id" },
                         Type = IndexType.Primary
@@ -125,7 +125,7 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                         Name = "created",
                         Type = ColumnTypes.Integer11
                     }
-                }, new IndexDefinition[4]{
+                }, new IndexDefinition[1]{
                     new IndexDefinition{
                         Fields = new string[1]{ "id" },
                         Type = IndexType.Primary
@@ -157,7 +157,7 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                         Type = ColumnTypes.TinyInt1
                     }
                 },
-                new IndexDefinition[2]{
+                new IndexDefinition[1]{
                     new IndexDefinition{
                         Fields = new string[2]{ "currency", "issuer" },
                         Type = IndexType.Primary
@@ -244,7 +244,7 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                         Name = "message",
                         Type = ColumnTypes.String50
                     }
-                }, new IndexDefinition[4]{
+                }, new IndexDefinition[1]{
                     new IndexDefinition{
                         Fields = new string[1]{ "id" },
                         Type = IndexType.Primary
