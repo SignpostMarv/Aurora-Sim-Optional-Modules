@@ -40,9 +40,11 @@ using OpenSim.Region.Framework.Scenes;
 using Aurora.Framework;
 using Aurora.Simulation.Base;
 
+using OpenMetaverse.StructuredData;
+
 namespace Aurora.Addon.VirtualTokens
 {
-    public class VirtualToken
+    public class VirtualToken : Query2Type<VirtualToken>
     {
         public UUID id = UUID.Zero;
         public string code = "";
@@ -55,14 +57,295 @@ namespace Aurora.Addon.VirtualTokens
         public string name = "";
         public string description = "";
         public bool enabled = true;
+
+        #region Query2Type members
+
+        public new static List<VirtualToken> doQuery2Type(List<string> query)
+        {
+            List<VirtualToken> tokens = new List<VirtualToken>(query.Count % 8 == 0 ? query.Count / 8 : 0);
+
+            if (query.Count % 8 == 0)
+            {
+                for (int i = 0; i < query.Count; i += 8)
+                {
+                    tokens.Add(new VirtualToken
+                    {
+                        id = UUID.Parse(query[i]),
+                        code = query[i + 1],
+                        estate = int.Parse(query[i + 2]),
+                        founder = UUID.Parse(query[i + 3]),
+                        created = Utils.UnixTimeToDateTime(int.Parse(query[i + 4])),
+                        icon = UUID.Parse(query[i + 5]),
+                        overridable = uint.Parse(query[i + 6]) >= 1,
+                        category = UUID.Parse(query[i + 7]),
+                        name = query[i + 8].Trim(),
+                        description = query[i + 9].Trim(),
+                        enabled = uint.Parse(query[i + 10]) >= 1
+                    });
+                }
+            }
+
+            return tokens;
+        }
+
+        #region IDataTransferable members
+
+        public override OSDMap ToOSD()
+        {
+            OSDMap resp = new OSDMap(11);
+
+            resp["id"] = id;
+            resp["code"] = code;
+            resp["estate"] = estate;
+            resp["founder"] = founder;
+            resp["created"] = Utils.DateTimeToUnixTime(created);
+            resp["icon"] = icon;
+            resp["overridable"] = overridable;
+            resp["category"] = category;
+            resp["name"] = name;
+            resp["description"] = description;
+            resp["enabled"] = enabled;
+
+            return resp;
+        }
+
+        public override void FromOSD(OSDMap map)
+        {
+            if (map.ContainsKey("id"))
+            {
+                id = UUID.Parse(map["id"].ToString());
+            }
+            if (map.ContainsKey("code"))
+            {
+                code = map["code"].ToString().Trim();
+            }
+            if (map.ContainsKey("estate"))
+            {
+                estate = int.Parse(map["estate"].ToString());
+            }
+            if (map.ContainsKey("founder"))
+            {
+                founder = UUID.Parse(map["founder"].ToString());
+            }
+            if (map.ContainsKey("created"))
+            {
+                created = Utils.UnixTimeToDateTime(int.Parse(map["created"].ToString()));
+            }
+            if (map.ContainsKey("icon"))
+            {
+                icon = UUID.Parse(map["icon"].ToString());
+            }
+            if (map.ContainsKey("overridable"))
+            {
+                overridable = bool.Parse(map["overridable"].ToString());
+            }
+            if (map.ContainsKey("category"))
+            {
+                category = UUID.Parse(map["category"].ToString());
+            }
+            if (map.ContainsKey("name"))
+            {
+                name = map["name"].ToString().Trim();
+            }
+            if (map.ContainsKey("description"))
+            {
+                description = map["description"].ToString().Trim();
+            }
+            if (map.ContainsKey("enabled"))
+            {
+                enabled = bool.Parse(map["enabled"].ToString());
+            }
+        }
+
+        public override bool Equals(object obj)
+        {
+            VirtualToken tok = obj as VirtualToken;
+            return (
+                tok.id == id &&
+                tok.code == code &&
+                tok.estate == estate &&
+                tok.founder == founder &&
+                tok.created.CompareTo(created) == 0 &&
+                tok.icon == icon &&
+                tok.overridable == overridable &&
+                tok.category == category &&
+                tok.name == name &&
+                tok.description == description &&
+                tok.enabled == enabled
+            );
+        }
+
+        #endregion
+
+        #endregion
     }
 
-    public class VirtualTokenIssuer
+    public class VirtualTokenIssuer : Query2Type<VirtualTokenIssuer>
     {
         public UUID tokenID = UUID.Zero;
         public UUID userID = UUID.Zero;
         public bool canIssueChildTokens = false;
         public bool enabled;
+
+        #region Query2Type members
+
+        public new static List<VirtualTokenIssuer> doQuery2Type(List<string> query)
+        {
+            List<VirtualTokenIssuer> issuers = new List<VirtualTokenIssuer>(query.Count % 4 == 0 ? query.Count / 4 : 0);
+
+            if (query.Count % 4 == 0)
+            {
+                for (int i = 0; i < query.Count; i += 4)
+                {
+                    issuers.Add(new VirtualTokenIssuer
+                    {
+                        tokenID = UUID.Parse(query[i]),
+                        userID = UUID.Parse(query[i + 1]),
+                        canIssueChildTokens = uint.Parse(query[i + 2]) >= 1,
+                        enabled = uint.Parse(query[i + 3]) >= 1
+                    });
+                }
+            }
+
+            return issuers;
+        }
+
+        #region IDataTransferable members
+
+        public override OSDMap ToOSD()
+        {
+            OSDMap resp = new OSDMap(4);
+
+            resp["tokenID"] = tokenID;
+            resp["userID"] = userID;
+            resp["canIssueChildTokens"] = canIssueChildTokens;
+            resp["enabled"] = enabled;
+
+            return resp;
+        }
+
+        public override void FromOSD(OSDMap map)
+        {
+            if (map.ContainsKey("tokenID"))
+            {
+                tokenID = UUID.Parse(map["tokenID"].ToString());
+            }
+            if (map.ContainsKey("userID"))
+            {
+                userID = UUID.Parse(map["userID"].ToString());
+            }
+            if (map.ContainsKey("canIssueChildTokens"))
+            {
+                canIssueChildTokens = bool.Parse(map["canIssueChildTokens"].ToString());
+            }
+            if (map.ContainsKey("enabled"))
+            {
+                enabled = bool.Parse(map["enabled"].ToString());
+            }
+        }
+
+        public override bool Equals(object obj)
+        {
+            VirtualTokenIssuer isur = obj as VirtualTokenIssuer;
+            return(
+                isur.tokenID == tokenID &&
+                isur.userID == userID &&
+                isur.canIssueChildTokens == canIssueChildTokens &&
+                isur.enabled == enabled
+            );
+        }
+
+        #endregion
+
+        #endregion
+    }
+
+    public class VirtualTokenCategory : Query2Type<VirtualTokenCategory>
+    {
+        public UUID id = UUID.Zero;
+        public UUID parent = UUID.Zero;
+        public string name = string.Empty;
+        public string description = string.Empty;
+        public DateTime created;
+
+        #region Query2Type members
+
+        public new static List<VirtualTokenCategory> doQuery2Type(List<string> query)
+        {
+            List<VirtualTokenCategory> categories = new List<VirtualTokenCategory>(query.Count % 5 == 0 ? query.Count / 5 : 0);
+
+            if (query.Count % 5 == 0)
+            {
+                for (int i = 0; i < query.Count; i += 5)
+                {
+                    categories.Add(new VirtualTokenCategory
+                    {
+                        id = UUID.Parse(query[i]),
+                        parent = UUID.Parse(query[i + 1]),
+                        name = query[i + 2].Trim(),
+                        description = query[i + 3].Trim(),
+                        created = Utils.UnixTimeToDateTime(int.Parse(query[i + 4]))
+                    });
+                }
+            }
+
+            return categories;
+        }
+
+        #region IDataTransferable members
+
+        public override OSDMap ToOSD()
+        {
+            OSDMap resp = new OSDMap();
+
+            resp["id"] = id;
+            resp["parent"] = parent;
+            resp["name"] = name;
+            resp["description"] = description;
+            resp["created"] = Utils.DateTimeToUnixTime(created);
+
+            return resp;
+        }
+
+        public override void FromOSD(OSDMap map)
+        {
+            if (map.ContainsKey("id"))
+            {
+                id = UUID.Parse(map["id"].ToString());
+            }
+            if (map.ContainsKey("parent"))
+            {
+                parent = UUID.Parse(map["parent"].ToString());
+            }
+            if (map.ContainsKey("name"))
+            {
+                name = map["name"].ToString();
+            }
+            if (map.ContainsKey("description"))
+            {
+                description = map["description"].ToString();
+            }
+            if (map.ContainsKey("created"))
+            {
+                created = Utils.UnixTimeToDateTime(int.Parse(map["created"].ToString()));
+            }
+        }
+
+        public override bool Equals(object obj)
+        {
+            VirtualTokenCategory cat = obj as VirtualTokenCategory;
+            return (
+                cat.id == id &&
+                cat.parent == parent &&
+                cat.name == name &&
+                cat.description == description &&
+                cat.created.CompareTo(created) == 0
+            );
+        }
+   
+        #endregion
+    
+        #endregion
     }
 
     public class VirtualTokensData : IAuroraDataPlugin
@@ -72,11 +355,6 @@ namespace Aurora.Addon.VirtualTokens
         {
             get { return m_enabled; }
         }
-
-        private string defaultIssuerPassword;
-        private string defaultIssuerName;
-        private UUID defaultIssuerUUID;
-        UserAccount defaultIssuer;
 
         private IGenericData GD;
         private string ConnectionString = "";
@@ -102,7 +380,7 @@ namespace Aurora.Addon.VirtualTokens
         {
             get
             {
-                return "VirtualTokens";
+                return "VirtualTokensData";
             }
         }
 
@@ -147,7 +425,7 @@ namespace Aurora.Addon.VirtualTokens
             DataManager.DataManager.RegisterPlugin(this);
 
             GD = GenericData;
-            GD.ConnectToDatabase(ConnectionString, Name, true);
+            GD.ConnectToDatabase(ConnectionString, "VirtualTokens", true);
         }
 
         #endregion
@@ -186,42 +464,40 @@ namespace Aurora.Addon.VirtualTokens
             }) ? token : null;
         }
 
-        private List<VirtualToken> Query2VirtualToken(List<string> query)
+        public bool UpdateToken(VirtualToken token)
         {
-            List<VirtualToken> tokens = new List<VirtualToken>(query.Count % 8 == 0 ? query.Count : 0);
-
-            if (query.Count % 8 != 0)
-            {
-                Warn("Query result had incorrect number of results. Multiple of 8 expected, found " + query.Count.ToString());
-            }
-            else
-            {
-                for (int i = 0; i < query.Count; i += 8)
-                {
-                    tokens.Add(new VirtualToken
-                    {
-                        id = UUID.Parse(query[i].ToString()),
-                        code = query[i + 1].ToString(),
-                        estate = int.Parse(query[i + 2].ToString()),
-                        founder = UUID.Parse(query[i + 3].ToString()),
-                        created = Utils.UnixTimeToDateTime(int.Parse(query[i + 4].ToString())),
-                        icon = UUID.Parse(query[i + 5].ToString()),
-                        overridable = uint.Parse(query[i + 6].ToString()) >= 1,
-                        category = UUID.Parse(query[i + 7].ToString())
-                    });
-                }
-            }
-
-            return tokens;
+            return GD.Update("as_virtualtokens", new object[8]{
+                token.code,
+                token.estate,
+                token.icon,
+                token.overridable,
+                token.category,
+                token.enabled,
+                token.name,
+                token.description
+            }, new string[8]{
+                "code",
+                "estate",
+                "icon",
+                "overridable",
+                "category",
+                "enabled",
+                "name",
+                "description"
+            }, new string[1]{
+                "id"
+            }, new object[1]{
+                token.id
+            });
         }
 
-        public VirtualToken Get(UUID id)
+        public VirtualToken GetToken(UUID id)
         {
             VirtualToken token = null;
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["id"] = id;
-            List<VirtualToken> query = Query2VirtualToken(GD.Query(new string[1] { "*" }, "as_virtualtokens", filter, null, 0, 1));
+            List<VirtualToken> query = VirtualToken.doQuery2Type(GD.Query(new string[1] { "*" }, "as_virtualtokens", filter, null, 0, 1));
 
             if (query.Count != 1)
             {
@@ -235,14 +511,14 @@ namespace Aurora.Addon.VirtualTokens
             return token;
         }
 
-        public VirtualToken Get(string code, int estateID)
+        public VirtualToken GetToken(string code, int estateID)
         {
             VirtualToken token = null;
 
             QueryFilter filter = new QueryFilter();
             filter.andFilters["code"] = code;
             filter.andFilters["estate"] = estateID;
-            List<VirtualToken> query = Query2VirtualToken(GD.Query(new string[1] { "*" }, "as_virtualtokens", filter, null, 0, 1));
+            List<VirtualToken> query = VirtualToken.doQuery2Type(GD.Query(new string[1] { "*" }, "as_virtualtokens", filter, null, 0, 1));
 
             if (query.Count != 1)
             {
@@ -256,11 +532,94 @@ namespace Aurora.Addon.VirtualTokens
             return token;
         }
 
-        public List<VirtualToken> GetList(string code)
+        public List<VirtualToken> GetToken(string code)
         {
             QueryFilter filter = new QueryFilter();
             filter.andFilters["code"] = code;
-            return Query2VirtualToken(GD.Query(new string[1] { "*" }, "as_virtualtokens", filter, null, null, null));
+            return VirtualToken.doQuery2Type(GD.Query(new string[11] {
+                "id",
+                "code",
+                "estate",
+                "founder",
+                "created",
+                "icon",
+                "overridable",
+                "category",
+                "enabled",
+                "name",
+                "description"
+            }, "as_virtualtokens", filter, null, null, null));
+        }
+
+        #endregion
+
+        #region Category
+
+        public VirtualTokenCategory AddCategory(VirtualTokenCategory category)
+        {
+            category.id = category.id == UUID.Zero ? UUID.Random() : category.id;
+            category.created = DateTime.Now;
+
+            return GD.Insert("as_virtualtokens_category", new string[5]{
+                "id",
+                "parent",
+                "name",
+                "description",
+                "created"
+            }, new object[5]{
+                category.id,
+                category.parent,
+                category.name,
+                category.description,
+                Utils.DateTimeToUnixTime(category.created)
+            }) ? category : null;
+        }
+
+        public bool UpdateCategory(VirtualTokenCategory category)
+        {
+            return GD.Update("as_virtualtokens_category", new object[3]{
+                category.parent,
+                category.name,
+                category.description
+            }, new string[3]{
+                "parent",
+                "name",
+                "description"
+            }, new string[1]{
+                "id"
+            }, new object[1]{
+                category.id
+            });
+        }
+
+        public VirtualTokenCategory GetCategory(UUID id)
+        {
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["id"] = id;
+            List<VirtualTokenCategory> categories = VirtualTokenCategory.doQuery2Type(GD.Query(new string[5]{
+                "id",
+                "parent",
+                "name",
+                "description",
+                "created"
+            }, "as_virtualtokens_category", filter, null, 1, null));
+
+            return categories.Count == 1 ? categories[0] : null;
+        }
+
+        public VirtualTokenCategory GetCategory(string name)
+        {
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["name"] = name.Trim();
+            List<VirtualTokenCategory> categories = VirtualTokenCategory.doQuery2Type(GD.Query(new string[5]{
+                "id",
+                "parent",
+                "name",
+                "description",
+                "created"
+            }, "as_virtualtokens_category", filter, null, 1, null));
+
+            return categories.Count == 1 ? categories[0] : null;
         }
 
         #endregion
@@ -299,6 +658,20 @@ namespace Aurora.Addon.VirtualTokens
             });
         }
 
+        public VirtualTokenIssuer GetIssuer(UUID id)
+        {
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["id"] = id;
+            List<VirtualTokenIssuer> issuers = VirtualTokenIssuer.doQuery2Type(GD.Query(new string[4]{
+                "currency",
+                "issuer",
+                "issueChildTokens",
+                "enabled"
+            }, "as_virtualtokens_issuers", filter, null, 1, null));
+
+            return issuers.Count == 1 ? issuers[0] : null;
+        }
+
         #endregion
     }
 
@@ -311,6 +684,8 @@ namespace Aurora.Addon.VirtualTokens
 
         bool m_enabled = false;
         IRegistryCore m_registry;
+
+        VirtualTokensData m_vtd;
 
         public string Name
         {
@@ -372,6 +747,12 @@ namespace Aurora.Addon.VirtualTokens
             if (m_enabled)
             {
                 m_registry = registry;
+                m_vtd = DataManager.DataManager.RequestPlugin<VirtualTokensData>();
+                if (m_vtd == null)
+                {
+                    m_enabled = false;
+                    Warn("Could not get Virtual Tokens Data Plugin");
+                }
             }
         }
 
@@ -410,6 +791,7 @@ namespace Aurora.Addon.VirtualTokens
                         {
                             Warn("Failed to create account for default issuer");
                             m_enabled = false;
+                            return;
                         }
                         else
                         {
@@ -425,11 +807,64 @@ namespace Aurora.Addon.VirtualTokens
                 {
                     m_enabled = false;
                     Info("Could not find user service");
+                    return;
                 }
             }
             else
             {
                 Info("Disabled");
+                return;
+            }
+
+            VirtualTokenCategory exampleCategory = m_vtd.GetCategory("Examples");
+            if (exampleCategory == null)
+            {
+                Info("Creating example category.");
+                exampleCategory = m_vtd.AddCategory(new VirtualTokenCategory
+                {
+                    name = "Examples",
+                    description = "Category to used for demonstrating VirtualTokens module"
+                });
+                if (exampleCategory == null)
+                {
+                    Warn("Could not create example category.");
+                    m_enabled = false;
+                    return;
+                }
+            }
+
+            VirtualToken exampleToken = m_vtd.GetToken("XMPL$", 1);
+            if (exampleToken == null)
+            {
+                Info("Creating example token");
+                exampleToken = m_vtd.AddToken(new VirtualToken{
+                    code = "XMPL$",
+                    category = exampleCategory.id,
+                    name = "Example Dollars",
+                    description = "Example Dollar Tokens",
+                    founder = defaultIssuer.PrincipalID,
+                    overridable = true,
+                    enabled = true,
+                    estate = 1
+                });
+                if (exampleToken == null)
+                {
+                    Warn("Could not create example token.");
+                    m_enabled = false;
+                    return;
+                }
+                else if (!m_vtd.AddIssuer(new VirtualTokenIssuer
+                {
+                    tokenID = exampleToken.id,
+                    userID = defaultIssuer.PrincipalID,
+                    enabled = true,
+                    canIssueChildTokens = false
+                }))
+                {
+                    Warn("Could not assign default token issuer to example token.");
+                    m_enabled = false;
+                    return;
+                }
             }
         }
 

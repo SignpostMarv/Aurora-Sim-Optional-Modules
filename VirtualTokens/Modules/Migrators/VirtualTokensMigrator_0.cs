@@ -125,10 +125,14 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                         Name = "created",
                         Type = ColumnTypes.Integer11
                     }
-                }, new IndexDefinition[1]{
+                }, new IndexDefinition[2]{
                     new IndexDefinition{
                         Fields = new string[1]{ "id" },
                         Type = IndexType.Primary
+                    },
+                    new IndexDefinition{
+                        Fields = new string[1]{ "name" },
+                        Type = IndexType.Index
                     }
                 }
             ));
