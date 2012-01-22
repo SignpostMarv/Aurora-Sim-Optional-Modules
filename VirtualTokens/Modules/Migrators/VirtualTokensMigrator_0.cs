@@ -91,10 +91,14 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                         Name = "description",
                         Type = ColumnTypes.String255
                     }
-                }, new IndexDefinition[1]{
+                }, new IndexDefinition[2]{
                     new IndexDefinition{
                         Fields = new string[1]{ "id" },
                         Type = IndexType.Primary
+                    },
+                    new IndexDefinition{
+                        Fields = new string[2]{ "code", "estate" },
+                        Type = IndexType.Unique
                     }
                 }
             ));
