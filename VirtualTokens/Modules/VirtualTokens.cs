@@ -44,11 +44,14 @@ using OpenMetaverse.StructuredData;
 
 namespace Aurora.Addon.VirtualTokens
 {
+    
+    #region Types
+
     public class VirtualToken : Query2Type<VirtualToken>
     {
         public UUID id = UUID.Zero;
         public string code = "";
-        public int estate = 1;
+        public uint estate = 1;
         public UUID founder = UUID.Zero;
         public DateTime created;
         public UUID icon = UUID.Zero;
@@ -62,25 +65,29 @@ namespace Aurora.Addon.VirtualTokens
 
         public new static List<VirtualToken> doQuery2Type(List<string> query)
         {
-            List<VirtualToken> tokens = new List<VirtualToken>(query.Count % 8 == 0 ? query.Count / 8 : 0);
+            List<VirtualToken> tokens = new List<VirtualToken>(query.Count % 11 == 0 ? query.Count / 11 : 0);
 
-            if (query.Count % 8 == 0)
+            if (query.Count % 11 == 0)
             {
-                for (int i = 0; i < query.Count; i += 8)
+                for (int i = 0; i < query.Count; i += 11)
                 {
+                    uint foo;
+                    bool overridable = uint.TryParse(query[i + 6], out foo) ? foo >= 1 : bool.Parse(query[i + 6]);
+                    bool enabled = uint.TryParse(query[i + 8], out foo) ? foo >= 1 : bool.Parse(query[i + 8]);
+
                     tokens.Add(new VirtualToken
                     {
                         id = UUID.Parse(query[i]),
                         code = query[i + 1],
-                        estate = int.Parse(query[i + 2]),
+                        estate = uint.Parse(query[i + 2]),
                         founder = UUID.Parse(query[i + 3]),
                         created = Utils.UnixTimeToDateTime(int.Parse(query[i + 4])),
                         icon = UUID.Parse(query[i + 5]),
-                        overridable = uint.Parse(query[i + 6]) >= 1,
+                        overridable = overridable,
                         category = UUID.Parse(query[i + 7]),
-                        name = query[i + 8].Trim(),
-                        description = query[i + 9].Trim(),
-                        enabled = uint.Parse(query[i + 10]) >= 1
+                        enabled = enabled,
+                        name = query[i + 9].Trim(),
+                        description = query[i + 10].Trim()
                     });
                 }
             }
@@ -121,7 +128,7 @@ namespace Aurora.Addon.VirtualTokens
             }
             if (map.ContainsKey("estate"))
             {
-                estate = int.Parse(map["estate"].ToString());
+                estate = uint.Parse(map["estate"].ToString());
             }
             if (map.ContainsKey("founder"))
             {
@@ -197,12 +204,15 @@ namespace Aurora.Addon.VirtualTokens
             {
                 for (int i = 0; i < query.Count; i += 4)
                 {
+                    uint foo;
+                    bool canIssueChildTokens = uint.TryParse(query[i + 2], out foo) ? foo >= 1 : bool.Parse(query[i + 2]);
+                    bool enabled = uint.TryParse(query[i + 3], out foo) ? foo >= 1 : bool.Parse(query[i + 3]);
                     issuers.Add(new VirtualTokenIssuer
                     {
                         tokenID = UUID.Parse(query[i]),
                         userID = UUID.Parse(query[i + 1]),
-                        canIssueChildTokens = uint.Parse(query[i + 2]) >= 1,
-                        enabled = uint.Parse(query[i + 3]) >= 1
+                        canIssueChildTokens = canIssueChildTokens,
+                        enabled = enabled
                     });
                 }
             }
@@ -347,6 +357,132 @@ namespace Aurora.Addon.VirtualTokens
     
         #endregion
     }
+
+    public enum VirtualTokenTransactionType{
+        Unknown = -1,
+        System
+    }
+
+    public class VirtualTokenTransaction : Query2Type<VirtualTokenTransaction>{
+        public UUID id = UUID.Zero;
+        public UUID tokenID = UUID.Zero;
+        public UUID sender = UUID.Zero;
+        public UUID recipient = UUID.Zero;
+        public DateTime issuedOn;
+        public VirtualTokenTransactionType type;
+        public int amount=0;
+        public bool verified=false;
+        private string m_message = string.Empty;
+        public string message{
+            get{
+                return m_message;
+            }
+            set{
+                m_message = value.Trim();
+            }
+        }
+
+        #region Query2Type members
+        
+        public new static List<VirtualTokenTransaction> doQuery2Type(List<string> query){
+            List<VirtualTokenTransaction> transactions = new List<VirtualTokenTransaction>(query.Count % 9 == 0 ? query.Count / 9 : 0);
+
+            if(query.Count % 9 == 0){
+                for(int i=0;i<query.Count; i += 9){
+                    uint type = uint.Parse(query[i + 5]);
+                    uint foo;
+                    bool verified = uint.TryParse(query[i + 7], out foo) ? foo >= 1 : bool.Parse(query[i + 7]);
+                    transactions.Add(new VirtualTokenTransaction{
+                        id = UUID.Parse(query[i]),
+                        tokenID = UUID.Parse(query[i + 1]),
+                        sender = UUID.Parse(query[i + 2]),
+                        recipient = UUID.Parse(query[i + 3]),
+                        issuedOn = Utils.UnixTimeToDateTime(int.Parse(query[i + 4])),
+                        type = (type <= (uint)Enum.GetValues(typeof(VirtualTokenTransactionType)).Cast<VirtualTokenTransactionType>().Max()) ? (VirtualTokenTransactionType)type : VirtualTokenTransactionType.Unknown,
+                        amount = int.Parse(query[i + 6]),
+                        verified = verified,
+                        message = query[i + 8]
+                    });
+                }
+            }
+
+            return transactions;
+        }
+
+        #region IDataTransferable members
+
+        public override OSDMap ToOSD()
+        {
+            OSDMap resp = new OSDMap(9);
+
+            resp["id"] = id;
+            resp["tokenID"] = tokenID;
+            resp["sender"] = sender;
+            resp["recipient"] = recipient;
+            resp["issuedOn"] = Utils.DateTimeToUnixTime(issuedOn);
+            resp["type"] = (int)type;
+            resp["amount"] = amount;
+            resp["verified"] = verified;
+            resp["message"] = message;
+
+            return resp;
+        }
+
+        public override void FromOSD(OSDMap map)
+        {
+            if(map.ContainsKey("id")){
+                id = UUID.Parse(map["id"].ToString());
+            }
+            if(map.ContainsKey("tokenID")){
+                tokenID = UUID.Parse(map["tokenID"].ToString());
+            }
+            if(map.ContainsKey("sender")){
+                sender = UUID.Parse(map["sender"].ToString());
+            }
+            if(map.ContainsKey("recipient")){
+                recipient = UUID.Parse(map["recipient"].ToString());
+            }
+            if(map.ContainsKey("issuedOn")){
+                issuedOn = Utils.UnixTimeToDateTime(int.Parse(map["issuedOn"].ToString()));
+            }
+            if(map.ContainsKey("type")){
+                uint maptype = uint.Parse(map["type"].ToString());
+                type = (maptype <= (uint)Enum.GetValues(typeof(VirtualTokenTransactionType)).Cast<VirtualTokenTransactionType>().Max()) ? (VirtualTokenTransactionType)maptype : VirtualTokenTransactionType.Unknown;
+            }
+            if(map.ContainsKey("amount")){
+                amount = int.Parse(map["amount"].ToString());
+            }
+            if(map.ContainsKey("verified")){
+                verified = bool.Parse(map["verified"].ToString());
+            }
+            if(map.ContainsKey("message")){
+                message = map["message"].ToString();
+            }
+        }
+
+        public override bool Equals(object obj)
+        {
+            VirtualTokenTransaction foo = obj as VirtualTokenTransaction;
+
+            return(
+                foo.id == id &&
+                foo.tokenID == tokenID &&
+                foo.sender == sender &&
+                foo.recipient == recipient &&
+                foo.issuedOn.CompareTo(issuedOn) == 0 &&
+                foo.type == type &&
+                foo.amount == amount &&
+                foo.verified == verified &&
+                foo.message == message
+            );
+        }
+
+        #endregion
+
+        #endregion
+    }
+
+    #endregion
 
     public class VirtualTokensData : IAuroraDataPlugin
     {
@@ -511,7 +647,7 @@ namespace Aurora.Addon.VirtualTokens
             return token;
         }
 
-        public VirtualToken GetToken(string code, int estateID)
+        public VirtualToken GetToken(string code, uint estateID)
         {
             VirtualToken token = null;
 
@@ -549,6 +685,135 @@ namespace Aurora.Addon.VirtualTokens
                 "name",
                 "description"
             }, "as_virtualtokens", filter, null, null, null));
+        }
+
+        public List<VirtualToken> GetTokenParents(VirtualToken token, bool stopAtNonOverridable)
+        {
+            List<VirtualToken> tokens = new List<VirtualToken>();
+
+            IEstateConnector estateConnector = Aurora.DataManager.DataManager.RequestPlugin<IEstateConnector>();
+
+            if (estateConnector != null)
+            {
+                VirtualToken currentToken = token;
+                EstateSettings es;
+                while (currentToken.estate > 1)
+                {
+                    es = estateConnector.GetEstateSettings((int)currentToken.estate);
+                    if (es == null)
+                    {
+                        break;
+                    }
+                    currentToken = GetToken(currentToken.code, es.ParentEstateID);
+                    if (currentToken == null)
+                    {
+                        break;
+                    }
+                    tokens.Add(currentToken);
+                    if (stopAtNonOverridable && currentToken.overridable == false)
+                    {
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                Warn("Could not get IEstateConnector");
+            }
+
+            return tokens;
+        }
+
+        #endregion
+
+        #region Tranactions & Balances
+
+        public VirtualTokenTransaction IssueTokenAmount(VirtualToken token, UUID issuer, UUID recipient, int amount, string message)
+        {
+            VirtualTokenTransaction transaction = null;
+
+            if (amount == 0)
+            {
+                Warn("Cannot issue 0 tokens");
+            }else if (!isValidIssuer(token, issuer))
+            {
+                Warn(string.Format("{0} is not a valid issuer for token {1} ({2})", issuer, token.code, token.id));
+            }
+            else
+            {
+                VirtualTokenTransaction temp = new VirtualTokenTransaction
+                {
+                    id = UUID.Random(),
+                    tokenID = token.id,
+                    sender = issuer,
+                    recipient = recipient,
+                    issuedOn = DateTime.Now,
+                    type = VirtualTokenTransactionType.System,
+                    amount = amount,
+                    message = message
+                };
+
+                if (GD.Insert("as_virtualtokens_transactions", new string[9]{
+                    "id",
+                    "currency",
+                    "sender",
+                    "recipient",
+                    "issuedOn",
+                    "type",
+                    "amount",
+                    "verified",
+                    "message"
+                }, new object[9]{
+                    temp.id,
+                    temp.tokenID,
+                    temp.sender,
+                    temp.recipient,
+                    Utils.DateTimeToUnixTime(temp.issuedOn),
+                    (uint)temp.type,
+                    temp.amount,
+                    temp.verified ? 1 : 0,
+                    temp.message
+                }))
+                {
+                    if (SetBalance(token, recipient, GetBalance(token, recipient) + amount))
+                    {
+                        transaction = temp;
+                    }
+                    else
+                    {
+                        Warn("Transaction was made, but could not update balance. Transaction ID: " + temp.id);
+                    }
+                }
+                else
+                {
+                    Warn("Transaction was not recorded, balance will not be updated.");
+                }
+            }
+
+            return transaction;
+        }
+
+        public int GetBalance(VirtualToken token, UUID user)
+        {
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["currency"] = token.id;
+            filter.andFilters["user"] = user;
+            List<string> query = GD.Query(new string[1] { "balance" }, "as_virtualtokens_balances", filter, null, 0, 1);
+
+            return query.Count == 1 ? int.Parse(query[0]) : 0;
+        }
+
+        private bool SetBalance(VirtualToken token, UUID user, int balance)
+        {
+            return (GetBalance(token, user) == balance) || GD.Replace("as_virtualtokens_balances", new string[3]{
+                "currency",
+                "user",
+                "balance"
+            }, new object[3]{
+                token.id,
+                user,
+                balance
+            });
         }
 
         #endregion
@@ -672,6 +937,44 @@ namespace Aurora.Addon.VirtualTokens
             return issuers.Count == 1 ? issuers[0] : null;
         }
 
+        public List<VirtualTokenIssuer> GetIssuer(VirtualToken token, bool includeParentTokenIssuers)
+        {
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["currency"] = token.id;
+            filter.andFilters["enabled"] = 1;
+            List<VirtualTokenIssuer> issuers = VirtualTokenIssuer.doQuery2Type(GD.Query(new string[4]{
+                "currency",
+                "issuer",
+                "issueChildTokens",
+                "enabled"
+            }, "as_virtualtokens_issuers", filter, null, null, null));
+
+            if (includeParentTokenIssuers)
+            {
+                foreach (VirtualToken parentToken in GetTokenParents(token, true))
+                {
+                    issuers.AddRange(GetIssuer(parentToken, false));
+                }
+            }
+
+            return issuers;
+        }
+
+        public bool isValidIssuer(VirtualToken token, UUID issuer)
+        {
+            List<VirtualTokenIssuer> issuers = GetIssuer(token, true);
+
+            foreach (VirtualTokenIssuer validIssuer in issuers)
+            {
+                if (validIssuer.userID == issuer)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         #endregion
     }
 
@@ -753,67 +1056,73 @@ namespace Aurora.Addon.VirtualTokens
                     m_enabled = false;
                     Warn("Could not get Virtual Tokens Data Plugin");
                 }
+                else if (!m_vtd.Enabled)
+                {
+                    m_enabled = false;
+                    Warn("Virtual Tokens Data Plugin was disabled");
+                }
+            }
+            else
+            {
+                Warn("not loaded");
             }
         }
 
         public void FinishedStartup()
         {
+            IUserAccountService userservice = m_registry.RequestModuleInterface<IUserAccountService>();
             if (m_enabled)
             {
-                IUserAccountService userservice = m_registry.RequestModuleInterface<IUserAccountService>();
-
-                if (userservice != null)
+                m_enabled = (userservice != null);
+                if (userservice == null)
                 {
-                    Info("Enabled");
-                    if (defaultIssuerUUID != UUID.Zero)
-                    {
-                        Info("Attempting to find default issuer by UUID " + defaultIssuerUUID);
-                        defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerUUID);
-                    }
-                    else
-                    {
-                        Info("Attempting to find default issuer by name " + defaultIssuerName);
-                        defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
-                    }
-                    if (defaultIssuer == null)
-                    {
-                        Warn("Default issuer account not found, attempting to create");
-                        if (defaultIssuerUUID != UUID.Zero)
-                        {
-                            userservice.CreateUser(defaultIssuerUUID, defaultIssuerName, defaultIssuerPassword, "");
-                        }
-                        else
-                        {
-                            userservice.CreateUser(defaultIssuerName, defaultIssuerPassword, "");
-                        }
-                        defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
-                        if (defaultIssuer == null)
-                        {
-                            Warn("Failed to create account for default issuer");
-                            m_enabled = false;
-                            return;
-                        }
-                        else
-                        {
-                            Info(defaultIssuer.Name + " created as default issuer with UUID " + defaultIssuer.PrincipalID);
-                        }
-                    }
-                    else
-                    {
-                        Info(defaultIssuer.Name + " found with UUID " + defaultIssuer.PrincipalID);
-                    }
+                    Warn("Could not find user service");
                 }
-                else
+                if (!m_enabled)
                 {
-                    m_enabled = false;
-                    Info("Could not find user service");
                     return;
                 }
             }
             else
             {
-                Info("Disabled");
                 return;
+            }
+            if (defaultIssuerUUID != UUID.Zero)
+            {
+                Info("Attempting to find default issuer by UUID " + defaultIssuerUUID);
+                defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerUUID);
+            }
+            else
+            {
+                Info("Attempting to find default issuer by name " + defaultIssuerName);
+                defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
+            }
+            if (defaultIssuer == null)
+            {
+                Warn("Default issuer account not found, attempting to create");
+                if (defaultIssuerUUID != UUID.Zero)
+                {
+                    userservice.CreateUser(defaultIssuerUUID, defaultIssuerName, defaultIssuerPassword, "");
+                }
+                else
+                {
+                    userservice.CreateUser(defaultIssuerName, defaultIssuerPassword, "");
+                }
+                defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
+                if (defaultIssuer == null)
+                {
+                    Warn("Failed to create account for default issuer");
+                    m_enabled = false;
+                    return;
+                }
+                else
+                {
+                    Info(defaultIssuer.Name + " created as default issuer with UUID " + defaultIssuer.PrincipalID);
+                }
+            }
+            else
+            {
+                Info("Default token issuer named \"" + defaultIssuer.Name + "\" found with UUID " + defaultIssuer.PrincipalID);
             }
 
             VirtualTokenCategory exampleCategory = m_vtd.GetCategory("Examples");
@@ -832,12 +1141,17 @@ namespace Aurora.Addon.VirtualTokens
                     return;
                 }
             }
+            else
+            {
+                Info("Example category already exists");
+            }
 
             VirtualToken exampleToken = m_vtd.GetToken("XMPL$", 1);
             if (exampleToken == null)
             {
                 Info("Creating example token");
-                exampleToken = m_vtd.AddToken(new VirtualToken{
+                exampleToken = m_vtd.AddToken(new VirtualToken
+                {
                     code = "XMPL$",
                     category = exampleCategory.id,
                     name = "Example Dollars",
@@ -853,20 +1167,52 @@ namespace Aurora.Addon.VirtualTokens
                     m_enabled = false;
                     return;
                 }
-                else if (!m_vtd.AddIssuer(new VirtualTokenIssuer
+            }
+
+            VirtualTokenIssuer exampleIssuer = new VirtualTokenIssuer
+            {
+                tokenID = exampleToken.id,
+                userID = defaultIssuer.PrincipalID,
+                enabled = true,
+                canIssueChildTokens = false
+            };
+
+            if (m_vtd.isValidIssuer(exampleToken, exampleIssuer.userID))
+            {
+                Info(string.Format("\"{0}\" is already an issuer for the example token", defaultIssuer.Name));
+            }
+            else
+            {
+                Warn(string.Format("\"{0}\" is not an issuer for the example token", defaultIssuer.Name));
+                if (!m_vtd.AddIssuer(exampleIssuer))
                 {
-                    tokenID = exampleToken.id,
-                    userID = defaultIssuer.PrincipalID,
-                    enabled = true,
-                    canIssueChildTokens = false
-                }))
-                {
-                    Warn("Could not assign default token issuer to example token.");
+                    Warn(string.Format("Could not assign \"{0}\" as issuer to example token.", defaultIssuer.Name));
                     m_enabled = false;
                     return;
                 }
+                else
+                {
+                    Info(string.Format("\"{0}\" successfully added as an issuer to the example token.", defaultIssuer.Name));
+                }
             }
+
+            VirtualTokenTransaction exampleTransaction = m_vtd.IssueTokenAmount(exampleToken, defaultIssuer.PrincipalID, defaultIssuer.PrincipalID, (new System.Random()).Next(int.MinValue, int.MaxValue), "Randomly issued tokens");
+            if (exampleTransaction == null)
+            {
+                Warn("Was not able to give default issuer a random amount of example tokens");
+                m_enabled = false;
+                return;
+            }
+            else
+            {
+                Info(string.Format("Successfully gave default issuer {0} example tokens", exampleTransaction.amount));
+            }
+
         }
+
+        #endregion
+
+        #region Tokens
 
         #endregion
     }
