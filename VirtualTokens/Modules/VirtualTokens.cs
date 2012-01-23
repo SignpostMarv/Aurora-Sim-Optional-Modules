@@ -602,29 +602,20 @@ namespace Aurora.Addon.VirtualTokens
 
         public bool UpdateToken(VirtualToken token)
         {
-            return GD.Update("as_virtualtokens", new object[8]{
-                token.code,
-                token.estate,
-                token.icon,
-                token.overridable,
-                token.category,
-                token.enabled,
-                token.name,
-                token.description
-            }, new string[8]{
-                "code",
-                "estate",
-                "icon",
-                "overridable",
-                "category",
-                "enabled",
-                "name",
-                "description"
-            }, new string[1]{
-                "id"
-            }, new object[1]{
-                token.id
-            });
+            Dictionary<string, object> values = new Dictionary<string, object>(8);
+            values["code"] = token.code;
+            values["estate"] = token.estate;
+            values["icon"] = token.icon;
+            values["overridable"] = token.overridable;
+            values["category"] = token.category;
+            values["enabled"] = token.enabled;
+            values["name"] = token.name;
+            values["description"] = token.description;
+
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["id"] = token.id;
+
+            return GD.Update("as_virtualtokens", values, null, filter, null, null);
         }
 
         public VirtualToken GetToken(UUID id)
@@ -842,19 +833,15 @@ namespace Aurora.Addon.VirtualTokens
 
         public bool UpdateCategory(VirtualTokenCategory category)
         {
-            return GD.Update("as_virtualtokens_category", new object[3]{
-                category.parent,
-                category.name,
-                category.description
-            }, new string[3]{
-                "parent",
-                "name",
-                "description"
-            }, new string[1]{
-                "id"
-            }, new object[1]{
-                category.id
-            });
+            Dictionary<string, object> values = new Dictionary<string, object>(3);
+            values["parent"] = category.parent;
+            values["name"] = category.name;
+            values["description"] = category.description;
+
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["id"] = category.id;
+
+            return GD.Update("as_virtualtokens_category", values, null, filter, null, null);
         }
 
         public VirtualTokenCategory GetCategory(UUID id)
@@ -908,19 +895,15 @@ namespace Aurora.Addon.VirtualTokens
 
         public bool UpdateIssuer(VirtualTokenIssuer issuer)
         {
-            return GD.Update("as_virtualtokens_issuers", new object[2]{
-                issuer.canIssueChildTokens ? 1 : 0,
-                issuer.enabled ? 1 : 0
-            }, new string[2]{
-                "issueChildTokens",
-                "enabled"
-            }, new string[2]{
-                "currency",
-                "issuer"
-            }, new object[2]{
-                issuer.tokenID,
-                issuer.userID
-            });
+            Dictionary<string, object> values = new Dictionary<string, object>(2);
+            values["issueChildTokens"] = issuer.canIssueChildTokens ? 1 : 0;
+            values["enabled"] = issuer.enabled ? 1 : 0;
+
+            QueryFilter filter = new QueryFilter();
+            filter.andFilters["currency"] = issuer.tokenID;
+            filter.andFilters["issuer"] = issuer.userID;
+
+            return GD.Update("as_virtualtokens_issuers", values, null, filter, null, null);
         }
 
         public VirtualTokenIssuer GetIssuer(UUID id)
