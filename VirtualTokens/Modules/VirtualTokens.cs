@@ -776,15 +776,11 @@ namespace Aurora.Addon.VirtualTokens
 
         private bool SetBalance(VirtualToken token, UUID user, int balance)
         {
-            return (GetBalance(token, user) == balance) || GD.Replace("as_virtualtokens_balances", new string[3]{
-                "currency",
-                "user",
-                "balance"
-            }, new object[3]{
-                token.id,
-                user,
-                balance
-            });
+            Dictionary<string, object> row = new Dictionary<string, object>(3);
+            row["currency"] = token.id;
+            row["user"] = user;
+            row["balance"] = balance;
+            return (GetBalance(token, user) == balance) || GD.Replace("as_virtualtokens_balances", row);
         }
 
         #endregion
