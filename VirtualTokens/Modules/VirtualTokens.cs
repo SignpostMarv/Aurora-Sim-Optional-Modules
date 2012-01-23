@@ -573,31 +573,20 @@ namespace Aurora.Addon.VirtualTokens
             token.id = token.id == UUID.Zero ? UUID.Random() : token.id;
             token.created = DateTime.Now;
 
-            return GD.Insert("as_virtualtokens", new string[11]{
-                "id",
-                "code",
-                "estate",
-                "founder",
-                "created",
-                "icon",
-                "overridable",
-                "category",
-                "name",
-                "description",
-                "enabled",
-            }, new object[11]{
-                token.id,
-                token.code,
-                token.estate,
-                token.founder,
-                Utils.DateTimeToUnixTime(token.created),
-                token.icon,
-                token.overridable,
-                token.category,
-                token.name,
-                token.description,
-                token.enabled ? 1 : 0
-            }) ? token : null;
+            Dictionary<string, object> row = new Dictionary<string, object>(11);
+            row["id"] = token.id;
+            row["code"] = token.code;
+            row["estate"] = token.estate;
+            row["founder"] = token.founder;
+            row["created"] = Utils.DateTimeToUnixTime(token.created);
+            row["icon"] = token.icon;
+            row["overridable"] = token.overridable;
+            row["category"] = token.category;
+            row["name"] = token.name;
+            row["description"] = token.description;
+            row["enabled"] = token.enabled ? 1 : 0;
+
+            return GD.Insert("as_virtualtokens", row) ? token : null;
         }
 
         public bool UpdateToken(VirtualToken token)
@@ -744,27 +733,18 @@ namespace Aurora.Addon.VirtualTokens
                     message = message
                 };
 
-                if (GD.Insert("as_virtualtokens_transactions", new string[9]{
-                    "id",
-                    "currency",
-                    "sender",
-                    "recipient",
-                    "issuedOn",
-                    "type",
-                    "amount",
-                    "verified",
-                    "message"
-                }, new object[9]{
-                    temp.id,
-                    temp.tokenID,
-                    temp.sender,
-                    temp.recipient,
-                    Utils.DateTimeToUnixTime(temp.issuedOn),
-                    (uint)temp.type,
-                    temp.amount,
-                    temp.verified ? 1 : 0,
-                    temp.message
-                }))
+                Dictionary<string, object> row = new Dictionary<string, object>(9);
+                row["id"] = temp.id;
+                row["currency"] = temp.tokenID;
+                row["sender"] = temp.sender;
+                row["recipient"] = temp.recipient;
+                row["issuedOn"] = Utils.DateTimeToUnixTime(temp.issuedOn);
+                row["type"] = (uint)temp.type;
+                row["amount"] = temp.amount;
+                row["verified"] = temp.verified ? 1 : 0;
+                row["message"] = temp.message;
+
+                if (GD.Insert("as_virtualtokens_transactions", row))
                 {
                     if (SetBalance(token, recipient, GetBalance(token, recipient) + amount))
                     {
@@ -816,19 +796,14 @@ namespace Aurora.Addon.VirtualTokens
             category.id = category.id == UUID.Zero ? UUID.Random() : category.id;
             category.created = DateTime.Now;
 
-            return GD.Insert("as_virtualtokens_category", new string[5]{
-                "id",
-                "parent",
-                "name",
-                "description",
-                "created"
-            }, new object[5]{
-                category.id,
-                category.parent,
-                category.name,
-                category.description,
-                Utils.DateTimeToUnixTime(category.created)
-            }) ? category : null;
+            Dictionary<string, object> row = new Dictionary<string, object>(5);
+            row["id"] = category.id;
+            row["parent"] = category.parent;
+            row["name"] = category.name;
+            row["description"] = category.description;
+            row["created"] = Utils.DateTimeToUnixTime(category.created);
+
+            return GD.Insert("as_virtualtokens_category", row) ? category : null;
         }
 
         public bool UpdateCategory(VirtualTokenCategory category)
@@ -880,17 +855,12 @@ namespace Aurora.Addon.VirtualTokens
 
         public bool AddIssuer(VirtualTokenIssuer issuer)
         {
-            return GD.Insert("as_virtualtokens_issuers", new string[4]{
-               "currency",
-               "issuer",
-               "issueChildTokens",
-               "enabled"
-            }, new object[4]{
-                issuer.tokenID,
-                issuer.userID,
-                issuer.canIssueChildTokens ? 1 : 0,
-                issuer.enabled ? 1 : 0
-            });
+            Dictionary<string, object> row = new Dictionary<string, object>(4);
+            row["currency"] = issuer.tokenID;
+            row["issuer"] = issuer.userID;
+            row["issueChildTokens"] = issuer.canIssueChildTokens ? 1 : 0;
+            row["enabled"] = issuer.enabled ? 1 : 0;
+            return GD.Insert("as_virtualtokens_issuers", row);
         }
 
         public bool UpdateIssuer(VirtualTokenIssuer issuer)
