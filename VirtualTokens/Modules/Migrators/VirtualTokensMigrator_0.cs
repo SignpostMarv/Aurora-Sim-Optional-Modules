@@ -49,47 +49,74 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                 new ColumnDefinition[11]{
                     new ColumnDefinition{
                         Name = "id",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "code",
-                        Type = ColumnTypes.Char5
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.String,
+                            Size = 5
+                        }
                     },
                     new ColumnDefinition{
                         Name = "estate",
-                        Type = ColumnTypes.Integer11
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Integer,
+                            Size = 11
+                        }
                     },
                     new ColumnDefinition{
                         Name = "founder",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "created",
-                        Type = ColumnTypes.Integer11
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Integer,
+                            Size = 11
+                        }
                     },
                     new ColumnDefinition{
                         Name = "icon",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "overridable",
-                        Type = ColumnTypes.TinyInt1
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Boolean
+                        }
                     },
                     new ColumnDefinition{
                         Name = "category",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "enabled",
-                        Type = ColumnTypes.TinyInt1
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Boolean
+                        }
                     },
                     new ColumnDefinition{
                         Name = "name",
-                        Type = ColumnTypes.String50
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.String,
+                            Size = 5
+                        }
                     },
                     new ColumnDefinition{
                         Name = "description",
-                        Type = ColumnTypes.String255
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.String,
+                            Size = 255
+                        }
                     }
                 }, new IndexDefinition[2]{
                     new IndexDefinition{
@@ -111,23 +138,36 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                 new ColumnDefinition[5]{
                     new ColumnDefinition{
                         Name = "id",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "parent",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "name",
-                        Type = ColumnTypes.String50
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.String,
+                            Size = 50
+                        }
                     },
                     new ColumnDefinition{
                         Name = "description",
-                        Type = ColumnTypes.String255
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.String,
+                            Size = 255
+                        }
                     },
                     new ColumnDefinition{
                         Name = "created",
-                        Type = ColumnTypes.Integer11
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Integer,
+                            Size = 11
+                        }
                     }
                 }, new IndexDefinition[2]{
                     new IndexDefinition{
@@ -150,19 +190,27 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                 new ColumnDefinition[4]{
                     new ColumnDefinition{
                         Name = "currency",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "issuer",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "issueChildTokens",
-                        Type = ColumnTypes.TinyInt1
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Boolean
+                        }
                     },
                     new ColumnDefinition{
                         Name = "enabled",
-                        Type = ColumnTypes.TinyInt1
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Boolean
+                        }
                     }
                 },
                 new IndexDefinition[1]{
@@ -182,15 +230,22 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                 new ColumnDefinition[3]{
                     new ColumnDefinition{
                         Name = "currency",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "user",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "balance",
-                        Type = ColumnTypes.Integer11
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Integer,
+                            Size = 11
+                        }
                     }
                 },
                 new IndexDefinition[3]{
@@ -218,39 +273,61 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                 new ColumnDefinition[9]{
                     new ColumnDefinition{
                         Name = "id",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "currency",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "sender",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "recipient",
-                        Type = ColumnTypes.Char36
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.UUID
+                        }
                     },
                     new ColumnDefinition{
                         Name = "issuedOn",
-                        Type = ColumnTypes.Integer11
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Integer,
+                            Size = 11
+                        }
                     },
                     new ColumnDefinition{
                         Name = "type",
-                        Type = ColumnTypes.TinyInt1
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.TinyInt,
+                            Size = 1
+                        }
                     },
                     new ColumnDefinition{
                         Name = "amount",
-                        Type = ColumnTypes.Integer11
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Integer,
+                            Size = 11
+                        }
                     },
                     new ColumnDefinition{
                         Name = "verified",
-                        Type = ColumnTypes.TinyInt1
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.Boolean
+                        }
                     },
                     new ColumnDefinition{
                         Name = "message",
-                        Type = ColumnTypes.String50
+                        Type = new ColumnTypeDef{
+                            Type = ColumnType.String,
+                            Size = 50
+                        }
                     }
                 }, new IndexDefinition[1]{
                     new IndexDefinition{
