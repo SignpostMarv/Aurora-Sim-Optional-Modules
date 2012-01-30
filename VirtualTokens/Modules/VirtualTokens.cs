@@ -26,9 +26,11 @@
  */
 
 using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Reflection;
+using System.Collections.Generic;
 
 using Nini.Config;
 
@@ -42,449 +44,19 @@ using Aurora.Simulation.Base;
 
 using OpenMetaverse.StructuredData;
 
+using Aurora.ScriptEngine.AuroraDotNetEngine;
+using IScriptAPI = Aurora.ScriptEngine.AuroraDotNetEngine.IScriptApi;
+using LSL_Float = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.LSLFloat;
+using LSL_Integer = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.LSLInteger;
+using LSL_Key = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.key;
+using LSL_List = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.list;
+using LSL_Rotation = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.Quaternion;
+using LSL_String = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.LSLString;
+using LSL_Vector = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.Vector3;
+
 namespace Aurora.Addon.VirtualTokens
 {
-    
-    #region Types
-
-    public class VirtualToken : Query2Type<VirtualToken>
-    {
-        public UUID id = UUID.Zero;
-        public string code = "";
-        public uint estate = 1;
-        public UUID founder = UUID.Zero;
-        public DateTime created;
-        public UUID icon = UUID.Zero;
-        public bool overridable = false;
-        public UUID category = UUID.Zero;
-        public string name = "";
-        public string description = "";
-        public bool enabled = true;
-
-        #region Query2Type members
-
-        public new static List<VirtualToken> doQuery2Type(List<string> query)
-        {
-            List<VirtualToken> tokens = new List<VirtualToken>(query.Count % 11 == 0 ? query.Count / 11 : 0);
-
-            if (query.Count % 11 == 0)
-            {
-                for (int i = 0; i < query.Count; i += 11)
-                {
-                    uint foo;
-                    bool overridable = uint.TryParse(query[i + 6], out foo) ? foo >= 1 : bool.Parse(query[i + 6]);
-                    bool enabled = uint.TryParse(query[i + 8], out foo) ? foo >= 1 : bool.Parse(query[i + 8]);
-
-                    tokens.Add(new VirtualToken
-                    {
-                        id = UUID.Parse(query[i]),
-                        code = query[i + 1],
-                        estate = uint.Parse(query[i + 2]),
-                        founder = UUID.Parse(query[i + 3]),
-                        created = Utils.UnixTimeToDateTime(int.Parse(query[i + 4])),
-                        icon = UUID.Parse(query[i + 5]),
-                        overridable = overridable,
-                        category = UUID.Parse(query[i + 7]),
-                        enabled = enabled,
-                        name = query[i + 9].Trim(),
-                        description = query[i + 10].Trim()
-                    });
-                }
-            }
-
-            return tokens;
-        }
-
-        #region IDataTransferable members
-
-        public override OSDMap ToOSD()
-        {
-            OSDMap resp = new OSDMap(11);
-
-            resp["id"] = id;
-            resp["code"] = code;
-            resp["estate"] = estate;
-            resp["founder"] = founder;
-            resp["created"] = Utils.DateTimeToUnixTime(created);
-            resp["icon"] = icon;
-            resp["overridable"] = overridable;
-            resp["category"] = category;
-            resp["name"] = name;
-            resp["description"] = description;
-            resp["enabled"] = enabled;
-
-            return resp;
-        }
-
-        public override void FromOSD(OSDMap map)
-        {
-            if (map.ContainsKey("id"))
-            {
-                id = UUID.Parse(map["id"].ToString());
-            }
-            if (map.ContainsKey("code"))
-            {
-                code = map["code"].ToString().Trim();
-            }
-            if (map.ContainsKey("estate"))
-            {
-                estate = uint.Parse(map["estate"].ToString());
-            }
-            if (map.ContainsKey("founder"))
-            {
-                founder = UUID.Parse(map["founder"].ToString());
-            }
-            if (map.ContainsKey("created"))
-            {
-                created = Utils.UnixTimeToDateTime(int.Parse(map["created"].ToString()));
-            }
-            if (map.ContainsKey("icon"))
-            {
-                icon = UUID.Parse(map["icon"].ToString());
-            }
-            if (map.ContainsKey("overridable"))
-            {
-                overridable = bool.Parse(map["overridable"].ToString());
-            }
-            if (map.ContainsKey("category"))
-            {
-                category = UUID.Parse(map["category"].ToString());
-            }
-            if (map.ContainsKey("name"))
-            {
-                name = map["name"].ToString().Trim();
-            }
-            if (map.ContainsKey("description"))
-            {
-                description = map["description"].ToString().Trim();
-            }
-            if (map.ContainsKey("enabled"))
-            {
-                enabled = bool.Parse(map["enabled"].ToString());
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            VirtualToken tok = obj as VirtualToken;
-            return (
-                tok.id == id &&
-                tok.code == code &&
-                tok.estate == estate &&
-                tok.founder == founder &&
-                tok.created.CompareTo(created) == 0 &&
-                tok.icon == icon &&
-                tok.overridable == overridable &&
-                tok.category == category &&
-                tok.name == name &&
-                tok.description == description &&
-                tok.enabled == enabled
-            );
-        }
-
-        #endregion
-
-        #endregion
-    }
-
-    public class VirtualTokenIssuer : Query2Type<VirtualTokenIssuer>
-    {
-        public UUID tokenID = UUID.Zero;
-        public UUID userID = UUID.Zero;
-        public bool canIssueChildTokens = false;
-        public bool enabled;
-
-        #region Query2Type members
-
-        public new static List<VirtualTokenIssuer> doQuery2Type(List<string> query)
-        {
-            List<VirtualTokenIssuer> issuers = new List<VirtualTokenIssuer>(query.Count % 4 == 0 ? query.Count / 4 : 0);
-
-            if (query.Count % 4 == 0)
-            {
-                for (int i = 0; i < query.Count; i += 4)
-                {
-                    uint foo;
-                    bool canIssueChildTokens = uint.TryParse(query[i + 2], out foo) ? foo >= 1 : bool.Parse(query[i + 2]);
-                    bool enabled = uint.TryParse(query[i + 3], out foo) ? foo >= 1 : bool.Parse(query[i + 3]);
-                    issuers.Add(new VirtualTokenIssuer
-                    {
-                        tokenID = UUID.Parse(query[i]),
-                        userID = UUID.Parse(query[i + 1]),
-                        canIssueChildTokens = canIssueChildTokens,
-                        enabled = enabled
-                    });
-                }
-            }
-
-            return issuers;
-        }
-
-        #region IDataTransferable members
-
-        public override OSDMap ToOSD()
-        {
-            OSDMap resp = new OSDMap(4);
-
-            resp["tokenID"] = tokenID;
-            resp["userID"] = userID;
-            resp["canIssueChildTokens"] = canIssueChildTokens;
-            resp["enabled"] = enabled;
-
-            return resp;
-        }
-
-        public override void FromOSD(OSDMap map)
-        {
-            if (map.ContainsKey("tokenID"))
-            {
-                tokenID = UUID.Parse(map["tokenID"].ToString());
-            }
-            if (map.ContainsKey("userID"))
-            {
-                userID = UUID.Parse(map["userID"].ToString());
-            }
-            if (map.ContainsKey("canIssueChildTokens"))
-            {
-                canIssueChildTokens = bool.Parse(map["canIssueChildTokens"].ToString());
-            }
-            if (map.ContainsKey("enabled"))
-            {
-                enabled = bool.Parse(map["enabled"].ToString());
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            VirtualTokenIssuer isur = obj as VirtualTokenIssuer;
-            return(
-                isur.tokenID == tokenID &&
-                isur.userID == userID &&
-                isur.canIssueChildTokens == canIssueChildTokens &&
-                isur.enabled == enabled
-            );
-        }
-
-        #endregion
-
-        #endregion
-    }
-
-    public class VirtualTokenCategory : Query2Type<VirtualTokenCategory>
-    {
-        public UUID id = UUID.Zero;
-        public UUID parent = UUID.Zero;
-        public string name = string.Empty;
-        public string description = string.Empty;
-        public DateTime created;
-
-        #region Query2Type members
-
-        public new static List<VirtualTokenCategory> doQuery2Type(List<string> query)
-        {
-            List<VirtualTokenCategory> categories = new List<VirtualTokenCategory>(query.Count % 5 == 0 ? query.Count / 5 : 0);
-
-            if (query.Count % 5 == 0)
-            {
-                for (int i = 0; i < query.Count; i += 5)
-                {
-                    categories.Add(new VirtualTokenCategory
-                    {
-                        id = UUID.Parse(query[i]),
-                        parent = UUID.Parse(query[i + 1]),
-                        name = query[i + 2].Trim(),
-                        description = query[i + 3].Trim(),
-                        created = Utils.UnixTimeToDateTime(int.Parse(query[i + 4]))
-                    });
-                }
-            }
-
-            return categories;
-        }
-
-        #region IDataTransferable members
-
-        public override OSDMap ToOSD()
-        {
-            OSDMap resp = new OSDMap();
-
-            resp["id"] = id;
-            resp["parent"] = parent;
-            resp["name"] = name;
-            resp["description"] = description;
-            resp["created"] = Utils.DateTimeToUnixTime(created);
-
-            return resp;
-        }
-
-        public override void FromOSD(OSDMap map)
-        {
-            if (map.ContainsKey("id"))
-            {
-                id = UUID.Parse(map["id"].ToString());
-            }
-            if (map.ContainsKey("parent"))
-            {
-                parent = UUID.Parse(map["parent"].ToString());
-            }
-            if (map.ContainsKey("name"))
-            {
-                name = map["name"].ToString();
-            }
-            if (map.ContainsKey("description"))
-            {
-                description = map["description"].ToString();
-            }
-            if (map.ContainsKey("created"))
-            {
-                created = Utils.UnixTimeToDateTime(int.Parse(map["created"].ToString()));
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            VirtualTokenCategory cat = obj as VirtualTokenCategory;
-            return (
-                cat.id == id &&
-                cat.parent == parent &&
-                cat.name == name &&
-                cat.description == description &&
-                cat.created.CompareTo(created) == 0
-            );
-        }
-   
-        #endregion
-    
-        #endregion
-    }
-
-    public enum VirtualTokenTransactionType{
-        Unknown = -1,
-        System
-    }
-
-    public class VirtualTokenTransaction : Query2Type<VirtualTokenTransaction>{
-        public UUID id = UUID.Zero;
-        public UUID tokenID = UUID.Zero;
-        public UUID sender = UUID.Zero;
-        public UUID recipient = UUID.Zero;
-        public DateTime issuedOn;
-        public VirtualTokenTransactionType type;
-        public int amount=0;
-        public bool verified=false;
-        private string m_message = string.Empty;
-        public string message{
-            get{
-                return m_message;
-            }
-            set{
-                m_message = value.Trim();
-            }
-        }
-
-        #region Query2Type members
-        
-        public new static List<VirtualTokenTransaction> doQuery2Type(List<string> query){
-            List<VirtualTokenTransaction> transactions = new List<VirtualTokenTransaction>(query.Count % 9 == 0 ? query.Count / 9 : 0);
-
-            if(query.Count % 9 == 0){
-                for(int i=0;i<query.Count; i += 9){
-                    uint type = uint.Parse(query[i + 5]);
-                    uint foo;
-                    bool verified = uint.TryParse(query[i + 7], out foo) ? foo >= 1 : bool.Parse(query[i + 7]);
-                    transactions.Add(new VirtualTokenTransaction{
-                        id = UUID.Parse(query[i]),
-                        tokenID = UUID.Parse(query[i + 1]),
-                        sender = UUID.Parse(query[i + 2]),
-                        recipient = UUID.Parse(query[i + 3]),
-                        issuedOn = Utils.UnixTimeToDateTime(int.Parse(query[i + 4])),
-                        type = (type <= (uint)Enum.GetValues(typeof(VirtualTokenTransactionType)).Cast<VirtualTokenTransactionType>().Max()) ? (VirtualTokenTransactionType)type : VirtualTokenTransactionType.Unknown,
-                        amount = int.Parse(query[i + 6]),
-                        verified = verified,
-                        message = query[i + 8]
-                    });
-                }
-            }
-
-            return transactions;
-        }
-
-        #region IDataTransferable members
-
-        public override OSDMap ToOSD()
-        {
-            OSDMap resp = new OSDMap(9);
-
-            resp["id"] = id;
-            resp["tokenID"] = tokenID;
-            resp["sender"] = sender;
-            resp["recipient"] = recipient;
-            resp["issuedOn"] = Utils.DateTimeToUnixTime(issuedOn);
-            resp["type"] = (int)type;
-            resp["amount"] = amount;
-            resp["verified"] = verified;
-            resp["message"] = message;
-
-            return resp;
-        }
-
-        public override void FromOSD(OSDMap map)
-        {
-            if(map.ContainsKey("id")){
-                id = UUID.Parse(map["id"].ToString());
-            }
-            if(map.ContainsKey("tokenID")){
-                tokenID = UUID.Parse(map["tokenID"].ToString());
-            }
-            if(map.ContainsKey("sender")){
-                sender = UUID.Parse(map["sender"].ToString());
-            }
-            if(map.ContainsKey("recipient")){
-                recipient = UUID.Parse(map["recipient"].ToString());
-            }
-            if(map.ContainsKey("issuedOn")){
-                issuedOn = Utils.UnixTimeToDateTime(int.Parse(map["issuedOn"].ToString()));
-            }
-            if(map.ContainsKey("type")){
-                uint maptype = uint.Parse(map["type"].ToString());
-                type = (maptype <= (uint)Enum.GetValues(typeof(VirtualTokenTransactionType)).Cast<VirtualTokenTransactionType>().Max()) ? (VirtualTokenTransactionType)maptype : VirtualTokenTransactionType.Unknown;
-            }
-            if(map.ContainsKey("amount")){
-                amount = int.Parse(map["amount"].ToString());
-            }
-            if(map.ContainsKey("verified")){
-                verified = bool.Parse(map["verified"].ToString());
-            }
-            if(map.ContainsKey("message")){
-                message = map["message"].ToString();
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            VirtualTokenTransaction foo = obj as VirtualTokenTransaction;
-
-            return(
-                foo.id == id &&
-                foo.tokenID == tokenID &&
-                foo.sender == sender &&
-                foo.recipient == recipient &&
-                foo.issuedOn.CompareTo(issuedOn) == 0 &&
-                foo.type == type &&
-                foo.amount == amount &&
-                foo.verified == verified &&
-                foo.message == message
-            );
-        }
-
-        #endregion
-
-        #endregion
-    }
-
-    #endregion
-
-    public class VirtualTokensData : IAuroraDataPlugin
+    public class VirtualTokensConnector : IAuroraDataPlugin
     {
         private bool m_enabled = false;
         public bool Enabled
@@ -937,7 +509,7 @@ namespace Aurora.Addon.VirtualTokens
         bool m_enabled = false;
         IRegistryCore m_registry;
 
-        VirtualTokensData m_vtd;
+        VirtualTokensConnector m_vtd;
 
         public string Name
         {
@@ -999,7 +571,7 @@ namespace Aurora.Addon.VirtualTokens
             if (m_enabled)
             {
                 m_registry = registry;
-                m_vtd = DataManager.DataManager.RequestPlugin<VirtualTokensData>();
+                m_vtd = DataManager.DataManager.RequestPlugin<VirtualTokensConnector>();
                 if (m_vtd == null)
                 {
                     m_enabled = false;
@@ -1162,6 +734,117 @@ namespace Aurora.Addon.VirtualTokens
         #endregion
 
         #region Tokens
+
+        #endregion
+    }
+
+    public class VirtualTokensScripts : IVirtualTokensScriptAPI
+    {
+        private VirtualTokensConnector m_vtc;
+
+        #region IScriptApi Members
+
+        private UUID m_itemID;
+        private IScriptModulePlugin m_ScriptEngine;
+        private ISceneChildEntity m_host;
+        private ScriptProtectionModule m_ScriptProtection;
+
+        /// <summary>
+        ///   One-liner of that created by John Sibly @ http://stackoverflow.com/questions/52797/c-how-do-i-get-the-path-of-the-assembly-the-code-is-in
+        /// </summary>
+        public static string AssemblyFileName
+        {
+            get
+            {
+                return Path.GetFileName(Uri.UnescapeDataString((new UriBuilder(Assembly.GetExecutingAssembly().CodeBase)).Path));
+            }
+        }
+
+        public IScene World
+        {
+            get { return m_host.ParentEntity.Scene; }
+        }
+
+        public void Initialize(IScriptModulePlugin ScriptEngine, ISceneChildEntity host, uint localID, UUID itemID, ScriptProtectionModule module)
+        {
+            m_itemID = itemID;
+            m_ScriptEngine = ScriptEngine;
+            m_host = host;
+            m_ScriptProtection = module;
+            m_vtc = DataManager.DataManager.RequestPlugin<VirtualTokensConnector>();
+        }
+
+        public IScriptApi Copy()
+        {
+            return new VirtualTokensScripts();
+        }
+
+        public string Name
+        {
+            get { return "vt"; }
+        }
+
+        public string InterfaceName
+        {
+            get { return "IVirtualTokensScriptAPI"; }
+        }
+
+        /// <summary>
+        ///   We have to add a ref here, as this API is NOT inside of the script engine
+        ///   So we add the referenced assembly to ourselves
+        /// </summary>
+        public string[] ReferencedAssemblies
+        {
+            get
+            {
+                return new string[1]{ AssemblyFileName };
+            }
+        }
+
+        /// <summary>
+        ///   We use "Aurora.BotManager", and that isn't a default namespace, so we need to add it
+        /// </summary>
+        public string[] NamespaceAdditions
+        {
+            get { return new string[1] {"Aurora.Addon.VirtualTokens"}; }
+        }
+
+        #endregion
+
+        #region IVirtualTokensScriptAPI Members
+
+        public LSL_Key vtIssueTokenAmount(LSL_Key token, LSL_Key recipient, LSL_Integer amount, LSL_String message)
+        {
+            if (m_vtc != null && amount > 0)
+            {
+                if (message.ToString().Trim() == string.Empty)
+                {
+                    throw new Exception("A non-empty message must be specified.");
+                }
+                VirtualToken vt = m_vtc.GetToken(new UUID(token.ToString()));
+                if (vt == null)
+                {
+                    throw new Exception("No token could be found with key '" + token.ToString() + "'");
+                }
+                else if (!m_vtc.isValidIssuer(vt, m_host.OwnerID))
+                {
+                    throw new Exception("You do not have permission to issue " + vt.code);
+                }
+                UUID rUUID = new UUID(recipient.ToString());
+                VirtualTokenTransaction transaction = m_vtc.IssueTokenAmount(vt, m_host.OwnerID, rUUID, amount, message);
+                if (transaction != null)
+                {
+                    IScenePresence rw = World.GetScenePresence(rUUID);
+                    if (rw != null)
+                    {
+                        rw.ControllingClient.SendAlertMessage(string.Format("You have receieved currency: {0}{1}", vt.code, amount));
+                    }
+                    return new LSL_Key(transaction.id);
+                }
+            }
+
+            return new LSL_Key(UUID.Zero);
+        }
 
         #endregion
     }

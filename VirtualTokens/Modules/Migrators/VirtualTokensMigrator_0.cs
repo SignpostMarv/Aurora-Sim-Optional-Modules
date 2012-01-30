@@ -108,7 +108,7 @@ namespace Aurora.Addon.VirtualTokens.Migrators
                         Name = "name",
                         Type = new ColumnTypeDef{
                             Type = ColumnType.String,
-                            Size = 5
+                            Size = 50
                         }
                     },
                     new ColumnDefinition{

@@ -42,6 +42,7 @@
 	<Reference name="Aurora.Framework"/>
 	<Reference name="Aurora.Simulation.Base"/>
 	<Reference name="Aurora.DataManager"/>
+	<Reference name="Aurora.ScriptEngine.AuroraDotNetEngine"/>
 
 	<Reference name="OpenMetaverse" path="../../../bin/"/>
 	<Reference name="OpenMetaverseTypes" path="../../../bin/"/>
