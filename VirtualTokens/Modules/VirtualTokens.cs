@@ -88,7 +88,7 @@ namespace Aurora.Addon.VirtualTokens
         {
             get
             {
-                return "VirtualTokensData";
+                return "VirtualTokensConnector";
             }
         }
 
@@ -623,11 +623,11 @@ namespace Aurora.Addon.VirtualTokens
                 Warn("Default issuer account not found, attempting to create");
                 if (defaultIssuerUUID != UUID.Zero)
                 {
-                    userservice.CreateUser(defaultIssuerUUID, defaultIssuerName, defaultIssuerPassword, "");
+                    userservice.CreateUser(defaultIssuerUUID, defaultIssuerName, "$1$" + defaultIssuerPassword, "");
                 }
                 else
                 {
-                    userservice.CreateUser(defaultIssuerName, defaultIssuerPassword, "");
+                    userservice.CreateUser(defaultIssuerName, "$1$" + defaultIssuerPassword, "");
                 }
                 defaultIssuer = userservice.GetUserAccount(UUID.Zero, defaultIssuerName);
                 if (defaultIssuer == null)
@@ -738,7 +738,7 @@ namespace Aurora.Addon.VirtualTokens
         #endregion
     }
 
-    public class VirtualTokensScripts : IVirtualTokensScriptAPI
+    public class VirtualTokensScripts : IVirtualTokensScriptAPI, IScriptApi
     {
         private VirtualTokensConnector m_vtc;
 
