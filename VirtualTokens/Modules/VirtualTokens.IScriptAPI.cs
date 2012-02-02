@@ -15,7 +15,7 @@ using LSL_Vector = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.Vector3;
 
 namespace Aurora.Addon.VirtualTokens
 {
-    interface IVirtualTokensScriptAPI
+    public interface IVirtualTokensScriptAPI
     {
         LSL_Key vtIssueTokenAmount(LSL_Key token, LSL_Key recipient, LSL_Integer amount, LSL_String message);
     }
