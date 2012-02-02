@@ -738,7 +738,8 @@ namespace Aurora.Addon.VirtualTokens
         #endregion
     }
 
-    public class VirtualTokensScripts : IVirtualTokensScriptAPI, IScriptApi
+    [Serializable]
+    public class VirtualTokensScripts : MarshalByRefObject, IVirtualTokensScriptAPI, IScriptApi
     {
         private VirtualTokensConnector m_vtc;
 
@@ -781,7 +782,7 @@ namespace Aurora.Addon.VirtualTokens
 
         public string Name
         {
-            get { return "vt"; }
+            get { return "virtualtokens"; }
         }
 
         public string InterfaceName
@@ -817,6 +818,10 @@ namespace Aurora.Addon.VirtualTokens
         {
             if (m_vtc != null && amount > 0)
             {
+                if (!m_ScriptProtection.CheckThreatLevel(Aurora.ScriptEngine.AuroraDotNetEngine.ThreatLevel.Moderate, "vtIssueTokenAmount", m_host, Name, m_itemID))
+                {
+                    return "";
+                }
                 if (message.ToString().Trim() == string.Empty)
                 {
                     throw new Exception("A non-empty message must be specified.");
