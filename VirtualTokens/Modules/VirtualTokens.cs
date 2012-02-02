@@ -782,7 +782,7 @@ namespace Aurora.Addon.VirtualTokens
 
         public string Name
         {
-            get { return "virtualtokens"; }
+            get { return "vt"; }
         }
 
         public string InterfaceName
@@ -842,7 +842,7 @@ namespace Aurora.Addon.VirtualTokens
                     IScenePresence rw = World.GetScenePresence(rUUID);
                     if (rw != null)
                     {
-                        rw.ControllingClient.SendAlertMessage(string.Format("You have receieved currency: {0}{1}", vt.code, amount));
+                        rw.ControllingClient.SendAlertMessage(string.Format("You have receieved currency: {0}{1} - {2}", vt.code, amount, message));
                     }
                     return new LSL_Key(transaction.id);
                 }
