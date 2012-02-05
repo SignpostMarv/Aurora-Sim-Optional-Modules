@@ -499,4 +499,32 @@ namespace Aurora.Addon.VirtualTokens
             return base.GetHashCode();
         }
     }
+
+    public class VirtualTokenBalance
+    {
+        private VirtualToken m_Token;
+        public VirtualToken Token
+        {
+            get { return m_Token; }
+        }
+
+        private int m_Balance;
+        public int Balance
+        {
+            get { return m_Balance; }
+        }
+
+        private UUID m_User;
+        public UUID User
+        {
+            get { return m_User; }
+        }
+
+        public VirtualTokenBalance(UUID user, VirtualToken token, int balance)
+        {
+            m_User = user;
+            m_Token = token;
+            m_Balance = balance;
+        }
+    }
 }

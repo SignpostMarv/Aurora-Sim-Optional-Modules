@@ -10,6 +10,121 @@ using Aurora.Framework;
 
 namespace Aurora.Addon.OnTheFlyUI
 {
+    
+    public class Descriptor : List<IContainer>, IDataTransferableOSDMap
+    {
+        private List<string> m_Contexts;
+        private List<string> m_Messages;
+        private List<IContainer> m_Containers;
+
+        public Descriptor(IEnumerable<string> contexts, IEnumerable<IContainer> containers)
+        {
+            m_Contexts = new List<string>(contexts);
+            m_Messages = new List<string>(0);
+            m_Containers = new List<IContainer>(containers);
+        }
+
+        public Descriptor(IEnumerable<string> contexts, IEnumerable<string> messages, IEnumerable<IContainer> containers)
+        {
+            m_Contexts = new List<string>(contexts);
+            m_Messages = new List<string>(messages);
+            m_Containers = new List<IContainer>(containers);
+        }
+
+        public OSDMap ToOSD()
+        {
+            OSDMap resp = new OSDMap();
+            resp["Contexts"] = new OSDArray(m_Contexts.ConvertAll<OSD>(x => new OSDString(x)));
+            resp["Messages"] = new OSDArray(m_Messages.ConvertAll<OSD>(x => new OSDString(x)));
+            resp["Containers"] = new OSDArray(m_Containers.ConvertAll(x => x.ToOSD()));
+
+            return resp;
+        }
+    }
+
+    public class CategoryList<T> : Container<CategoryList<T>>
+    {
+        public new string Type
+        {
+            get { return base.Type + ":CategoryList"; }
+        }
+
+        private string m_Name;
+        public string Name
+        {
+            get { return m_Name; }
+        }
+
+        private Container<T> m_Description;
+        public Container<T> Description
+        {
+            get { return m_Description; }
+        }
+
+        public CategoryList(string name, Container<T> description)
+            : base()
+        {
+            m_Name = name;
+            m_Description = description;
+        }
+
+        public CategoryList(string name, Container<T> description, IEnumerable<CategoryList<T>> children)
+            : base(children)
+        {
+            m_Name = name;
+            m_Description = description;
+        }
+
+        public CategoryList(string name, Container<T> description, Attributes attributes, IEnumerable<CategoryList<T>> children)
+            : base(attributes, children)
+        {
+            m_Name = name;
+            m_Description = description;
+        }
+
+        public CategoryList(string name, Container<T> description, Attributes attributes, DataBind databind, IEnumerable<CategoryList<T>> children)
+            : base(attributes, databind, children)
+        {
+            m_Name = name;
+            m_Description = description;
+        }
+
+        public CategoryList(string name, Container<T> description, Attributes attributes)
+            : base(attributes)
+        {
+        }
+
+        public CategoryList(Attributes attributes, DataBind databind, Container<T> description)
+            : base(attributes, databind)
+        {
+            m_Name = "foo";
+            m_Description = description;
+        }
+
+        public new OSD ToOSD()
+        {
+            OSDMap resp = new OSDMap();
+            resp["Type"] = new OSDString(Type);
+            resp["Name"] = new OSDString(Name);
+            resp["Description"] = Description.ToOSD();
+            resp["Attributes"] = Attributes.ToOSD();
+            resp["DataBind"] = DataBind.ToOSD();
+
+            OSDArray children = new OSDArray(this.Count);
+            if (children.Count > 0)
+            {
+                List<CategoryList<T>> subCategories = this.OrderBy(x => x.Name).ToList<CategoryList<T>>();
+                foreach (CategoryList<T> child in subCategories)
+                {
+                    children.Add(child.ToOSD());
+                }
+            }
+            resp["Children"] = children;
+
+            return resp;
+        }
+    }
+
     #region Generic elements
 
     public class String : Element<string>
@@ -26,6 +141,11 @@ namespace Aurora.Addon.OnTheFlyUI
 
         public String(string value)
             : base(value)
+        {
+        }
+
+        public String(DataBind databind)
+            : base(databind)
         {
         }
     }
@@ -46,6 +166,11 @@ namespace Aurora.Addon.OnTheFlyUI
             : base(value)
         {
         }
+
+        public Integer(DataBind databind)
+            : base(databind)
+        {
+        }
     }
 
     #endregion
@@ -62,11 +187,18 @@ namespace Aurora.Addon.OnTheFlyUI
         public Image()
             : base()
         {
+            m_DataBind = new DataBind(0);
         }
 
         public Image(UUID value)
             : base(value)
         {
+            m_DataBind = new DataBind(0);
+        }
+
+        public Image(DataBind databind)
+        {
+            m_DataBind = databind;
         }
     }
 
@@ -84,6 +216,11 @@ namespace Aurora.Addon.OnTheFlyUI
 
         public Icon(UUID value)
             : base(value)
+        {
+        }
+
+        public Icon(DataBind databind)
+            : base(databind)
         {
         }
     }
@@ -135,6 +272,36 @@ namespace Aurora.Addon.OnTheFlyUI
         public new string Type
         {
             get { return base.Type + ":TableRow"; }
+        }
+
+        public TableRow()
+            : base()
+        {
+        }
+
+        public TableRow(IEnumerable<ITableRowChild> children)
+            : base(children)
+        {
+        }
+
+        public TableRow(Attributes attributes, IEnumerable<ITableRowChild> children)
+            : base(attributes, children)
+        {
+        }
+
+        public TableRow(Attributes attributes, DataBind databind, IEnumerable<ITableRowChild> children)
+            : base(attributes, databind, children)
+        {
+        }
+
+        public TableRow(Attributes attributes)
+            : base(attributes)
+        {
+        }
+
+        public TableRow(Attributes attributes, DataBind databind)
+            : base(attributes, databind)
+        {
         }
     }
 
@@ -215,35 +382,4 @@ namespace Aurora.Addon.OnTheFlyUI
     }
 
     #endregion
-    
-    public class Descriptor : List<IContainer>, IDataTransferableOSDMap
-    {
-        private List<string> m_Contexts;
-        private List<string> m_Messages;
-        private List<IContainer> m_Containers;
-
-        public Descriptor(List<string> contexts, List<IContainer> containers)
-        {
-            m_Contexts = contexts;
-            m_Messages = new List<string>(0);
-            m_Containers = containers;
-        }
-
-        public Descriptor(List<string> contexts, List<string> messages, List<IContainer> containers)
-        {
-            m_Contexts = contexts;
-            m_Messages = messages;
-            m_Containers = containers;
-        }
-
-        public OSDMap ToOSD()
-        {
-            OSDMap resp = new OSDMap();
-            resp["Contexts"] = new OSDArray(m_Contexts.ConvertAll<OSD>(x => new OSDString(x)));
-            resp["Messages"] = new OSDArray(m_Messages.ConvertAll<OSD>(x => new OSDString(x)));
-            resp["Containers"] = new OSDArray(m_Containers.ConvertAll(x => x.ToOSD()));
-
-            return resp;
-        }
-    }
 }

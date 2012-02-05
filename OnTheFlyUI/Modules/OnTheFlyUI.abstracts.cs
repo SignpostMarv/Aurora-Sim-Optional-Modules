@@ -185,11 +185,18 @@ namespace Aurora.Addon.OnTheFlyUI
 
         public Element()
         {
+            m_DataBind = new DataBind(0);
         }
 
         public Element(T value)
         {
             Value = value;
+            m_DataBind = new DataBind(0);
+        }
+
+        public Element(DataBind databind)
+        {
+            m_DataBind = databind;
         }
 
         public OSD ToOSD()

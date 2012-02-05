@@ -43,6 +43,11 @@ namespace Aurora.Addon.OnTheFlyUI
             : base(capacity)
         {
         }
+
+        public DataBind(string messageProperty, string typeProperty)
+        {
+            Add(messageProperty, typeProperty);
+        }
     }
 
     public interface IContainer : IDataTransferableOSD

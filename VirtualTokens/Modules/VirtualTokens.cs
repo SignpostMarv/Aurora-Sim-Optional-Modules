@@ -505,8 +505,31 @@ namespace Aurora.Addon.VirtualTokens
         public Descriptor OnTheFlyUI()
         {
             List<IContainer> containers = new List<IContainer>();
+            
+            Attributes left = new Attributes(1);
+            left["textAlign"] = "left";
+            Attributes right = new Attributes(1);
+            right["textAlign"] = "right";
 
-            return new Descriptor(new List<string>(new string[1]{ "user_profile:mine" }), containers);
+            DataBind categoryDatabind = new DataBind(2);
+            categoryDatabind[":category.Name"] = "Name";
+            categoryDatabind[":category.Children[]"] = ":category";
+
+            return new Descriptor(new string[1]{ "user_profile:mine" }, new string[1]{ "VirtualTokensBalanceUpdate" }, new IContainer[]{
+                new CategoryList<ITableChild>(left, categoryDatabind,
+                    new Table(new Attributes(0), new DataBind(":category.balances", ":balances"), new ITableChild[]{
+                        new TableRow(new Attributes(0), new DataBind(":balances[]", ":balance"), new ITableRowChild[]{
+                            new TableHeaderCell(left, new IElement[]{
+                                new OnTheFlyUI.String(new DataBind(":balances[]token.name", "Value"))
+                            }),
+                            new TableDataCell(right, new IElement[]{
+                                new OnTheFlyUI.Integer(new DataBind(":balance.amount", "Value")),
+                                new OnTheFlyUI.Icon(new DataBind(":balance.token.icon", "Value"))
+                            })
+                        })
+                    })
+                )
+            });
         }
 
         #endregion
