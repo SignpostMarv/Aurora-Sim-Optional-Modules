@@ -54,6 +54,8 @@ using LSL_Rotation = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.Quaternion
 using LSL_String = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.LSLString;
 using LSL_Vector = Aurora.ScriptEngine.AuroraDotNetEngine.LSL_Types.Vector3;
 
+using Aurora.Addon.OnTheFlyUI;
+
 namespace Aurora.Addon.VirtualTokens
 {
     public class VirtualTokensConnector : IAuroraDataPlugin
@@ -105,8 +107,8 @@ namespace Aurora.Addon.VirtualTokens
             IConfig dbConfig = m_config.Configs["DatabaseService"];
             if (dbConfig != null)
             {
-                StorageProvider = dbConfig.GetString("StorageProvider", String.Empty);
-                ConnectionString = dbConfig.GetString("ConnectionString", String.Empty);
+                StorageProvider = dbConfig.GetString("StorageProvider", string.Empty);
+                ConnectionString = dbConfig.GetString("ConnectionString", string.Empty);
             }
 
             StorageProvider = config.GetString("StorageProvider", StorageProvider);
@@ -494,6 +496,17 @@ namespace Aurora.Addon.VirtualTokens
             }
 
             return false;
+        }
+
+        #endregion
+
+        #region OnTheFlyUI members
+
+        public Descriptor OnTheFlyUI()
+        {
+            List<IContainer> containers = new List<IContainer>();
+
+            return new Descriptor(new List<string>(new string[1]{ "user_profile:mine" }), containers);
         }
 
         #endregion
