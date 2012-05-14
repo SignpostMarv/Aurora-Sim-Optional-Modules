@@ -149,7 +149,7 @@ namespace Aurora.Addon.VirtualTokens
 
         public VirtualToken AddToken(VirtualToken token)
         {
-            token.id = token.id == UUID.Zero ? UUID.Random() : token.id;
+            token.id = (token.id == UUID.Zero && token.estate != 1) ? UUID.Random() : token.id;
             token.created = DateTime.Now;
 
             Dictionary<string, object> row = new Dictionary<string, object>(11);
