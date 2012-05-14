@@ -362,6 +362,58 @@ namespace Aurora.Addon.VirtualTokens
             return (GetBalance(token, user) == balance) || GD.Replace("as_virtualtokens_balances", row);
         }
 
+        public VirtualTokenTransaction TransferTokenAmount(VirtualToken token, UUID from, UUID to, uint amount, string message)
+        {
+            VirtualTokenTransaction transaction = null;
+            int fromBalance = GetBalance(token, from);
+            if (fromBalance < amount)
+            {
+                Warn("Could not transfer {0}{1} from {2} to {3}; Insufficient balance.");
+                return transaction;
+            }
+
+            VirtualTokenTransaction temp = new VirtualTokenTransaction
+            {
+                id = UUID.Random(),
+                tokenID = token.id,
+                sender = from,
+                recipient = to,
+                issuedOn = DateTime.Now,
+                type = VirtualTokenTransactionType.System,
+                amount = (int)amount,
+                message = message
+            };
+
+            Dictionary<string, object> row = new Dictionary<string, object>(9);
+            row["id"] = temp.id;
+            row["currency"] = temp.tokenID;
+            row["sender"] = temp.sender;
+            row["recipient"] = temp.recipient;
+            row["issuedOn"] = Utils.DateTimeToUnixTime(temp.issuedOn);
+            row["type"] = (uint)temp.type;
+            row["amount"] = temp.amount;
+            row["verified"] = temp.verified ? 1 : 0;
+            row["message"] = temp.message;
+
+            if (GD.Insert("as_virtualtokens_transactions", row))
+            {
+                if (SetBalance(token, to, GetBalance(token, to) + (int)amount))
+                {
+                    transaction = temp;
+                }
+                else
+                {
+                    Warn("Transaction was made, but could not update balance. Transaction ID: " + temp.id);
+                }
+            }
+            else
+            {
+                Warn("Transaction was not recorded, balance will not be updated.");
+            }
+
+            return transaction;
+        }
+
         #endregion
 
         #region Category
@@ -547,10 +599,31 @@ namespace Aurora.Addon.VirtualTokens
         private UUID defaultIssuerUUID;
         UserAccount defaultIssuer;
 
-        bool m_enabled = false;
+        private bool m_enabled = false;
+        public bool Enabled
+        {
+            get { return m_enabled; }
+        }
+
         IRegistryCore m_registry;
 
         VirtualTokensConnector m_vtd;
+        public VirtualTokensConnector Connector
+        {
+            get
+            {
+                return m_vtd;
+            }
+        }
+
+        private string m_gridCurrencySymbol;
+        private string m_gridCurrencyName;
+
+        private VirtualToken m_gridCurrency;
+        public VirtualToken GridCurrency
+        {
+            get { return m_gridCurrency; }
+        }
 
         public string Name
         {
@@ -581,6 +654,7 @@ namespace Aurora.Addon.VirtualTokens
             m_registry = registry;
 
             IConfig VTconfig = config.Configs["Virtual Tokens"];
+            IConfig gridCfg = config.Configs["GridInfoService"];
             if (VTconfig != null)
             {
                 m_enabled = VTconfig.GetBoolean("Enabled", false);
@@ -600,6 +674,18 @@ namespace Aurora.Addon.VirtualTokens
                     }
                 }
             }
+            if (gridCfg == null)
+            {
+                Warn("Could not find GridInfoService config, using default currency symbol and name");
+                m_gridCurrencyName = "Aurora-Sim Dollars";
+                m_gridCurrencySymbol = "AS$";
+            }
+            else
+            {
+                m_gridCurrencyName = gridCfg.GetString("CurrencyName", "Aurora-Sim Dollars");
+                m_gridCurrencySymbol = gridCfg.GetString("CurrencySymbol", "AS$");
+            }
+            Info(string.Format("Grid Currency: {0} ({1})", m_gridCurrencyName, m_gridCurrencySymbol));
 
             if (m_enabled)
             {
@@ -632,21 +718,15 @@ namespace Aurora.Addon.VirtualTokens
 
         public void FinishedStartup()
         {
-            IUserAccountService userservice = m_registry.RequestModuleInterface<IUserAccountService>();
-            if (m_enabled)
+            if (!m_enabled)
             {
-                m_enabled = (userservice != null);
-                if (userservice == null)
-                {
-                    Warn("Could not find user service");
-                }
-                if (!m_enabled)
-                {
-                    return;
-                }
+                return;
             }
-            else
+            IUserAccountService userservice = m_registry.RequestModuleInterface<IUserAccountService>();
+            if (userservice == null)
             {
+                Warn("Could not find user service");
+                m_enabled = false;
                 return;
             }
             if (defaultIssuerUUID != UUID.Zero)
@@ -687,87 +767,65 @@ namespace Aurora.Addon.VirtualTokens
                 Info("Default token issuer named \"" + defaultIssuer.Name + "\" found with UUID " + defaultIssuer.PrincipalID);
             }
 
-            VirtualTokenCategory exampleCategory = m_vtd.GetCategory("Examples");
-            if (exampleCategory == null)
+            VirtualTokenCategory gridCurrencyCategory = m_vtd.GetCategory("Grid Currency");
+            if (gridCurrencyCategory == null)
             {
-                Info("Creating example category.");
-                exampleCategory = m_vtd.AddCategory(new VirtualTokenCategory
+                Info("Creating grid currency category");
+                gridCurrencyCategory = m_vtd.AddCategory(new VirtualTokenCategory
                 {
-                    name = "Examples",
-                    description = "Category to used for demonstrating VirtualTokens module"
+                    name = "Grid Currency",
+                    description = "Category for grid currencies"
                 });
-                if (exampleCategory == null)
+                if (gridCurrencyCategory == null)
                 {
-                    Warn("Could not create example category.");
+                    Warn("Could not create grid currency category.");
                     m_enabled = false;
                     return;
                 }
             }
-            else
-            {
-                Info("Example category already exists");
-            }
 
-            VirtualToken exampleToken = m_vtd.GetToken("XMPL$", 1);
-            if (exampleToken == null)
+            m_gridCurrency = m_vtd.GetToken(UUID.Zero);
+            if (m_gridCurrency == null)
             {
-                Info("Creating example token");
-                exampleToken = m_vtd.AddToken(new VirtualToken
+                Info("Creating grid currency token");
+                m_gridCurrency = m_vtd.AddToken(new VirtualToken
                 {
-                    code = "XMPL$",
-                    category = exampleCategory.id,
-                    name = "Example Dollars",
-                    description = "Example Dollar Tokens",
+                    id = UUID.Zero,
+                    code = m_gridCurrencySymbol,
+                    category = gridCurrencyCategory.id,
+                    name = m_gridCurrencyName,
+                    description = "Grid Currency",
                     founder = defaultIssuer.PrincipalID,
-                    overridable = true,
+                    overridable = false,
                     enabled = true,
                     estate = 1
                 });
-                if (exampleToken == null)
+                if (m_gridCurrency == null)
                 {
-                    Warn("Could not create example token.");
+                    Warn("Could not create grid currency.");
                     m_enabled = false;
                     return;
                 }
             }
-
-            VirtualTokenIssuer exampleIssuer = new VirtualTokenIssuer
+            if (m_gridCurrency.id != UUID.Zero)
             {
-                tokenID = exampleToken.id,
-                userID = defaultIssuer.PrincipalID,
-                enabled = true,
-                canIssueChildTokens = false
-            };
-
-            if (m_vtd.isValidIssuer(exampleToken, exampleIssuer.userID))
-            {
-                Info(string.Format("\"{0}\" is already an issuer for the example token", defaultIssuer.Name));
-            }
-            else
-            {
-                Warn(string.Format("\"{0}\" is not an issuer for the example token", defaultIssuer.Name));
-                if (!m_vtd.AddIssuer(exampleIssuer))
-                {
-                    Warn(string.Format("Could not assign \"{0}\" as issuer to example token.", defaultIssuer.Name));
-                    m_enabled = false;
-                    return;
-                }
-                else
-                {
-                    Info(string.Format("\"{0}\" successfully added as an issuer to the example token.", defaultIssuer.Name));
-                }
-            }
-
-            VirtualTokenTransaction exampleTransaction = m_vtd.IssueTokenAmount(exampleToken, defaultIssuer.PrincipalID, defaultIssuer.PrincipalID, (new System.Random()).Next(int.MinValue, int.MaxValue), "Randomly issued tokens");
-            if (exampleTransaction == null)
-            {
-                Warn("Was not able to give default issuer a random amount of example tokens");
+                Warn(string.Format("Grid Currency should have an id of UUID.Zero, {0} was found.", m_gridCurrency.id));
                 m_enabled = false;
                 return;
             }
-            else
+
+            if (!m_vtd.isValidIssuer(m_gridCurrency, defaultIssuer.PrincipalID))
             {
-                Info(string.Format("Successfully gave default issuer {0} example tokens", exampleTransaction.amount));
+                if(!m_vtd.AddIssuer(new VirtualTokenIssuer{
+                    tokenID = m_gridCurrency.id,
+                    userID = defaultIssuer.PrincipalID,
+                    enabled = true,
+                    canIssueChildTokens = false
+                })){
+                    Warn("Could not add default issuer to grid currency.");
+                    m_enabled = false;
+                    return;
+                }
             }
 
         }
@@ -897,11 +955,32 @@ namespace Aurora.Addon.VirtualTokens
 
     public class VirtualTokensCurrencyModule : IMoneyModule, ISharedRegionModule
     {
+        public string Name
+        {
+            get { return "VirtualTokensCurrencyModule"; }
+        }
+
         private bool m_enabled;
         public bool Enabled
         {
             get { return m_enabled; }
         }
+
+        private VirtualTokensService m_vts;
+
+        #region console wrappers
+
+        private void Info(object message)
+        {
+            MainConsole.Instance.Info("[" + Name + "]: " + message.ToString());
+        }
+
+        private void Warn(object message)
+        {
+            MainConsole.Instance.Warn("[" + Name + "]: " + message.ToString());
+        }
+
+        #endregion
 
         #region IMoneyModule Members
 
@@ -950,7 +1029,7 @@ namespace Aurora.Addon.VirtualTokens
 
         public int Balance(UUID agentID)
         {
-            return 0;
+            return m_vts.Connector.GetBalance(m_vts.GridCurrency, agentID);
         }
 
         public bool Charge(UUID agentID, int amount, string text)
@@ -963,9 +1042,16 @@ namespace Aurora.Addon.VirtualTokens
             return true;
         }
 
-        public void ProcessMoneyTransferRequest(UUID source, UUID destination, int amount,
-                                                int transactiontype, string description)
+        public void ProcessMoneyTransferRequest(UUID source, UUID destination, int amount, int transactiontype, string description)
         {
+            if (amount < 0)
+            {
+                m_vts.Connector.TransferTokenAmount(m_vts.GridCurrency, destination, source, (uint)amount, description);
+            }
+            else
+            {
+                m_vts.Connector.TransferTokenAmount(m_vts.GridCurrency, source, destination, (uint)amount, description);
+            }
         }
 
         public List<GroupAccountHistory> GetTransactions(UUID groupID, UUID agentID, int currentInterval, int intervalDays)
@@ -994,17 +1080,40 @@ namespace Aurora.Addon.VirtualTokens
         /// <param name = "config"></param>
         public void Initialise(IConfigSource config)
         {
+            m_enabled = false;
             IConfig currencyConfig = config.Configs["Currency"];
-            if (currencyConfig != null)
+            IConfig economyConfig = config.Configs["Economy"];
+            if (currencyConfig == null)
             {
-                m_enabled = currencyConfig.GetString("Module", "") == Name;
+                Warn("Could not find currency config.");
+                return;
             }
+            else if (economyConfig == null)
+            {
+                Warn("Could not find economy config.");
+                return;
+            }
+            m_enabled = currencyConfig.GetString("Module", "") == Name;
+            Info("Configured Module: " + currencyConfig.GetString("Module", "") + (m_enabled ? ", loading!" : ", not loading :("));
         }
 
         public void AddRegion(IScene scene)
         {
-            if (!m_enabled)
+            if (!m_enabled){
                 return;
+            }
+            m_vts = scene.RequestModuleInterface<VirtualTokensService>();
+            if(m_vts == null){
+                Warn("Could not get Virtual Tokens Service");
+            }
+            else if (!m_vts.Enabled)
+            {
+                Warn("Virtual Tokens Service is disabled");
+            }
+            else
+            {
+                Info(string.Format("{0} using Virtual Tokens currency module", scene.RegionInfo.RegionName));
+            }
             // Send ObjectCapacity to Scene..  Which sends it to the SimStatsReporter.
             scene.RegisterModuleInterface<IMoneyModule>(this);
 
@@ -1147,11 +1256,6 @@ namespace Aurora.Addon.VirtualTokens
         {
         }
 
-        public string Name
-        {
-            get { return "BaseCurrency"; }
-        }
-
         #region Event Handlers
 
         /// <summary>
@@ -1183,7 +1287,8 @@ namespace Aurora.Addon.VirtualTokens
         /// <param name = "TransactionID"></param>
         protected void SendMoneyBalance(IClientAPI client, UUID agentID, UUID SessionID, UUID TransactionID)
         {
-            client.SendMoneyBalance(TransactionID, true, new byte[0], 0);
+            Info(string.Format("{0} balance: {1}", agentID, m_vts.Connector.GetBalance(m_vts.GridCurrency, agentID)));
+            client.SendMoneyBalance(TransactionID, true, new byte[0], m_vts.Connector.GetBalance(m_vts.GridCurrency, agentID));
         }
 
         /// <summary>
